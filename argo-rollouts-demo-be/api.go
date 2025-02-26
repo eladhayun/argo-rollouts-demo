@@ -34,7 +34,7 @@ func checkHandler(c echo.Context) error {
 	}
 
 	// Set X-Version header
-	c.Response().Header().Set("X-Version", version)
+	c.Response().Header().Set("x-version", version)
 	return c.NoContent(statusCode)
 }
 
