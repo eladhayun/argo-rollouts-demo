@@ -22,6 +22,7 @@ dist/
 *.test
 *.out
 *.log
+*.mod
 vendor/
 bin/
 obj/
