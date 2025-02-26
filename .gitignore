@@ -1,0 +1,48 @@
+# Node.js (React)
+node_modules/
+build/
+dist/
+.cache/
+.npm/
+.yarn/
+.pnp.*
+.pnpm-debug.log
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vscode/
+
+# Golang
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.log
+vendor/
+bin/
+obj/
+pkg/
+Gopkg.lock
+go.sum
+go.work
+go.work.sum
+
+# Editor & OS-specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+Thumbs.db
+.DS_Store
+*.log
+*.pyc
+*.pyo
+*.pyd
+
+# Docker
+docker-compose.override.yml
