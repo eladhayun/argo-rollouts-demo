@@ -1,35 +1,163 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import {
+  Chart as ChartJS,
+  LinearScale,
+  PointElement,
+  Tooltip,
+} from 'chart.js';
+import { Bubble } from 'react-chartjs-2';
+import { faker } from '@faker-js/faker';
 
-function App() {
-  const [count, setCount] = useState(0)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://172.23.225.46:8000';
+
+ChartJS.register(LinearScale, PointElement, Tooltip);
+
+export const options = {
+  responsive: true, // Ensure the chart resizes
+  maintainAspectRatio: false, // Allow full height usage
+  animation: false, // Disable built-in animations
+  plugins: {
+    legend: { display: false }, // Hide legend
+    tooltip: { enabled: false }, // Disable tooltip on hover
+  },
+  elements: {
+    point: {
+      hoverRadius: 0, // Disable hover effects
+    },
+  },
+  scales: {
+    x: { min: -150, max: 150, display: false }, // Hide X-axis labels
+    y: { min: -100, max: 100, display: false }, // Hide Y-axis labels
+  },
+};
+
+const generateBubble = (color) => ({
+  x: 150, // Start from the right
+  y: faker.number.int({ min: -100, max: 100 }),
+  r: faker.number.int({ min: 5, max: 20 }),
+});
+
+export function App() {
+  const [data, setData] = useState({
+    datasets: [
+      {
+        data: [],
+        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(53, 162, 235, 0.5)',
+      },
+    ],
+  });
+
+  const [sliderValue, setSliderValue] = useState(0); // Default slider value
+
+  useEffect(() => {
+    const moveInterval = setInterval(() => {
+      setData((prevData) => ({
+        datasets: prevData.datasets.map((dataset) => ({
+          ...dataset,
+          data: dataset.data
+            .map((bubble) => ({
+              ...bubble,
+              x: bubble.x - 2, // Move left
+            }))
+            .filter((bubble) => bubble.x > -150), // Remove out-of-bounds bubbles
+        })),
+      }));
+    }, 50);
+
+    const fetchAndSpawnBubble = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/check`);
+        
+        if (response.status === 200) {
+          const version = response.headers.get("x-version"); // Read header value
+          console.log(`API returned 200 with x-version: ${version}, adding bubble.`);
+    
+          setData((prevData) => ({
+            datasets: prevData.datasets.map((dataset, index) => ({
+              ...dataset,
+              data: index === 0 && version === "v1"
+                ? [...dataset.data, generateBubble()] // Add to first dataset
+                : index === 1 && version === "v2"
+                ? [...dataset.data, generateBubble()] // Add to second dataset
+                : dataset.data, // No change
+            })),
+          }));
+        } else {
+          console.log('API did not return 200, skipping bubble.');
+        }
+      } catch (error) {
+        console.error('Error fetching API:', error);
+      }
+    };
+    
+
+    const apiInterval = setInterval(fetchAndSpawnBubble, 1000);
+
+    return () => {
+      clearInterval(moveInterval);
+      clearInterval(apiInterval);
+    };
+  }, []);
+
+  const handleSliderChange = (event) => {
+    const value = event.target.value;
+    setSliderValue(value);
+  };
+
+  const handleSliderSet = async (event) => {
+    const value = event.target.value;
+    try {
+      const response = await fetch(`${API_BASE_URL}/set-error-rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: Number(value) }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send value:', value);
+      } else {
+        console.log('Successfully sent value:', value);
+      }
+    } catch (error) {
+      console.error('Error sending value:', error);
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div style={{ height: '100vh', width: '100%', position: 'relative' }}> {/* Full height canvas */}
+      <Bubble options={options} data={data} />
 
-export default App
+      {/* Floating card with slider */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '15px',
+          background: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          borderRadius: '10px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          width: '200px',
+        }}
+      >
+        <label style={{ display: 'block', marginBottom: '10px' }}>
+          Error Rate: {sliderValue}%
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={sliderValue}
+          onChange={handleSliderChange}
+          onMouseUp={handleSliderSet}
+          style={{ width: '100%' }}
+        />
+      </div>
+    </div>
+  );
+}
