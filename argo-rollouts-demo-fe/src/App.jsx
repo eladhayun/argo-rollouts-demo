@@ -8,7 +8,7 @@ import {
 import { Bubble } from 'react-chartjs-2';
 import { faker } from '@faker-js/faker';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://172.23.225.46:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 ChartJS.register(LinearScale, PointElement, Tooltip);
 
@@ -70,18 +70,18 @@ export function App() {
 
     const fetchAndSpawnBubble = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/check`);
+        const response = await fetch(`${API_BASE_URL}/api/check`);
         
         if (response.status === 200) {
-          const version = response.headers.get("x-version"); // Read header value
-          console.log(`API returned 200 with x-version: ${version}, adding bubble.`);
+          const version = response.headers.get("X-Version"); // Read header value
+          console.log(`API returned 200 with X-Version: ${version}, adding bubble.`);
     
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === 0 && version === "v1"
+              data: index === 0 && version === "1"
                 ? [...dataset.data, generateBubble()] // Add to first dataset
-                : index === 1 && version === "v2"
+                : index === 1 && version === "2"
                 ? [...dataset.data, generateBubble()] // Add to second dataset
                 : dataset.data, // No change
             })),
@@ -95,7 +95,7 @@ export function App() {
     };
     
 
-    const apiInterval = setInterval(fetchAndSpawnBubble, 1000);
+    const apiInterval = setInterval(fetchAndSpawnBubble, 500);
 
     return () => {
       clearInterval(moveInterval);
@@ -111,7 +111,7 @@ export function App() {
   const handleSliderSet = async (event) => {
     const value = event.target.value;
     try {
-      const response = await fetch(`${API_BASE_URL}/set-error-rate`, {
+      const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: Number(value) }),

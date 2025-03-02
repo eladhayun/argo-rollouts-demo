@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"math/rand"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -34,7 +33,12 @@ func checkHandler(c echo.Context) error {
 	}
 
 	// Set X-Version header
-	c.Response().Header().Set("x-version", version)
+	c.Response().Header().Set("X-Version", version)
+	return c.NoContent(statusCode)
+}
+
+func healthzHandler(c echo.Context) error {
+	statusCode := http.StatusOK
 	return c.NoContent(statusCode)
 }
 
@@ -54,15 +58,20 @@ func setErrorRate(c echo.Context) error {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	// Get version from ENV (default to "1")
-	if v := os.Getenv("VERSION"); v == "2" {
-		version = "2"
-	}
-
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	
+	// Enable CORS with all headers exposed
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"*"}, // Change this to specific origins for security
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
+		AllowHeaders:     []string{"*"},
+		ExposeHeaders:    []string{"X-Version", "Authorization", "Content-Length"}, // Expose necessary headers
+		AllowCredentials: true,
+	}))
 
+	e.GET("/api/healthz", healthzHandler)
 	e.GET("/api/check", checkHandler)
 	e.POST("/api/set-error-rate", setErrorRate)
 

@@ -1,5 +1,5 @@
 # Use a minimal base image with Go
-FROM golang:1.21 as builder
+FROM golang:latest AS builder
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -14,7 +14,7 @@ RUN go mod tidy
 RUN go build -o server api.go
 
 # Use a minimal runtime image for deployment
-FROM alpine:latest
+FROM golang:latest
 
 # Set the working directory
 WORKDIR /root/
