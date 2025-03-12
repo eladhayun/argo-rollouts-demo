@@ -55,17 +55,24 @@ export function App() {
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
-      setData((prevData) => ({
-        datasets: prevData.datasets.map((dataset) => ({
-          ...dataset,
-          data: dataset.data
-            .map((bubble) => ({
-              ...bubble,
-              x: bubble.x - 2, // Move left
-            }))
-            .filter((bubble) => bubble.x > -150), // Remove out-of-bounds bubbles
-        })),
-      }));
+      setData((prevData) => {
+        // First, count total bubbles across all datasets for debugging
+        const totalBubbles = prevData.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
+        console.log(`Total bubbles before cleanup: ${totalBubbles}`);
+
+        return {
+          datasets: prevData.datasets.map((dataset) => ({
+            ...dataset,
+            data: dataset.data
+              .map((bubble) => ({
+                ...bubble,
+                x: bubble.x - 2, // Move left
+              }))
+              // More aggressive filtering - remove bubbles that are clearly off-screen
+              .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100),
+          })),
+        };
+      });
     }, 50);
 
     const fetchAndSpawnBubble = async () => {
