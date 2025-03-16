@@ -1,0 +1,68 @@
+name: Build and Push Frontend to ACR
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'argo-rollouts-demo-fe/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: playgroundacr1234.azurecr.io
+  IMAGE_NAME: argo-rollouts-demo-fe
+  
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: |
+          az acr login -n $(echo ${{ env.REGISTRY }} | cut -d'.' -f1)
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./argo-rollouts-demo-fe
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.run_number }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  update-gitops:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Update image tag in deployment
+        run: |
+          # Update the image tag in the deployment manifest
+          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.run_number }}|g" argo-rollouts-demo-gitops/apps/argo-rollouts-demo-fe/base/deployment.yaml
+
+      - name: Commit and push changes
+        run: |
+          cd argo-rollouts-demo-gitops
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "chore: update frontend image to v${{ github.run_number }}"
+          git push 
