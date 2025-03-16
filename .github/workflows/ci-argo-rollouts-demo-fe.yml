@@ -10,7 +10,7 @@ on:
 env:
   REGISTRY: playgroundacr1234.azurecr.io
   IMAGE_NAME: argo-rollouts-demo-fe
-  GITOPS_REPO: gitops.git
+  GITOPS_REPO: eladhayun/gitops
   
 jobs:
   build-and-push:
