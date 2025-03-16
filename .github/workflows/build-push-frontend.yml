@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: playgroundacr1234.azurecr.io
-  IMAGE_NAME: argocd-rollouts-demo-fe
+  IMAGE_NAME: argo-rollouts-demo-fe
   
 jobs:
   build-and-push:
