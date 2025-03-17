@@ -11,7 +11,7 @@ env:
   REGISTRY: playgroundacr1234.azurecr.io
   IMAGE_NAME: argo-rollouts-demo-fe
   GITOPS_REPO: eladhayun/gitops
-  SHORT_SHA: ${{ github.sha | substr(0, 8) }}
+  SHORT_SHA: ${{ github.sha }}
   
 jobs:
   build-and-push:
@@ -22,6 +22,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set short SHA
+        run: echo "SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
 
       - name: Log in to Azure
         uses: azure/login@v1
