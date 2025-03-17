@@ -22,9 +22,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set image tag
-        run: echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
-
       - name: Log in to Azure
         uses: azure/login@v1
         with:
@@ -39,7 +36,7 @@ jobs:
         with:
           context: ./argo-rollouts-demo-fe
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   update-gitops:
     needs: build-and-push
@@ -57,12 +54,12 @@ jobs:
       - name: Update image tag in deployment
         run: |
           # Update the image tag in the deployment manifest
-          sed -i "s|\(${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:\)[^[:space:]]*|\1${{ env.IMAGE_TAG }}|g" clusters/development/argo-rollouts-demo-fe/deployment.yaml
+          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" clusters/development/argo-rollouts-demo-fe/deployment.yaml
 
       - name: Commit and push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add clusters/development/argo-rollouts-demo-fe/deployment.yaml
-          git commit -m "chore: update frontend image to ${{ env.IMAGE_TAG }}"
+          git commit -m "chore: update frontend image to ${{ github.sha }}"
           git push origin HEAD 
