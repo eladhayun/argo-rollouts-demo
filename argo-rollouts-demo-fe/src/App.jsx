@@ -37,14 +37,9 @@ const generateBubble = (color) => ({
   r: faker.number.int({ min: 5, max: 20 }),
 });
 
-// Hash function to map SHA to dataset index (0-9)
-const hashToIndex = (sha) => {
-  let hash = 0;
-  for (let i = 0; i < sha.length; i++) {
-    hash = ((hash << 5) - hash) + sha.charCodeAt(i);
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash) % 10; // Map to 0-9
+// Map run number to dataset index (0-9)
+const runNumberToIndex = (runNumber) => {
+  return (parseInt(runNumber) - 1) % 10; // Subtract 1 because run numbers start at 1
 };
 
 export function App() {
@@ -100,7 +95,6 @@ export function App() {
       setData((prevData) => {
         // First, count total bubbles across all datasets for debugging
         const totalBubbles = prevData.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
-        console.log(`Total bubbles before cleanup: ${totalBubbles}`);
 
         return {
           datasets: prevData.datasets.map((dataset) => ({
@@ -128,7 +122,7 @@ export function App() {
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === hashToIndex(version)
+              data: index === runNumberToIndex(version)
                 ? [...dataset.data, generateBubble()] // Add to matching dataset
                 : dataset.data, // No change
             })),
