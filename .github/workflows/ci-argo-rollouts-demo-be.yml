@@ -11,7 +11,6 @@ env:
   REGISTRY: playgroundacr1234.azurecr.io
   IMAGE_NAME: argo-rollouts-demo-be
   GITOPS_REPO: eladhayun/gitops
-  SHORT_SHA: ${{ github.sha }}
   
 jobs:
   build-and-push:
@@ -23,8 +22,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set short SHA
-        run: echo "SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
+      - name: Set image tag
+        run: echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
 
       - name: Log in to Azure
         uses: azure/login@v1
@@ -40,9 +39,9 @@ jobs:
         with:
           context: ./argo-rollouts-demo-be
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           build-args: |
-            VERSION=${{ env.SHORT_SHA }}
+            VERSION=${{ env.IMAGE_TAG }}
 
   update-gitops:
     needs: build-and-push
@@ -60,12 +59,12 @@ jobs:
       - name: Update image tag in deployment
         run: |
           # Update the image tag in the deployment manifest
-          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}|g" clusters/development/argo-rollouts-demo-be/rollout.yaml
+          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}|g" clusters/development/argo-rollouts-demo-be/rollout.yaml
 
       - name: Commit and push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add clusters/development/argo-rollouts-demo-be/rollout.yaml
-          git commit -m "chore: update backend image to ${{ env.SHORT_SHA }}"
+          git commit -m "chore: update backend image to ${{ env.IMAGE_TAG }}"
           git push origin HEAD 
