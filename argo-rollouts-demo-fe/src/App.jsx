@@ -10,6 +10,9 @@ import { faker } from '@faker-js/faker';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
+// Set default API rate based on environment
+const DEFAULT_API_RATE = import.meta.env.MODE === 'development' ? 2000 : 500;
+
 ChartJS.register(LinearScale, PointElement, Tooltip);
 
 export const options = {
@@ -59,7 +62,7 @@ export function App() {
       },
       {
         data: [],
-        backgroundColor: 'rgba(255, 206, 86, 0.5)',
+        backgroundColor: 'rgba(129, 14, 96, 0.5)',
       },
       {
         data: [],
@@ -67,7 +70,7 @@ export function App() {
       },
       {
         data: [],
-        backgroundColor: 'rgba(255, 159, 64, 0.5)',
+        backgroundColor: 'rgba(2, 49, 80, 0.5)',
       },
       {
         data: [],
@@ -89,11 +92,12 @@ export function App() {
   });
 
   const [sliderValue, setSliderValue] = useState(0); // Default slider value
+  const [apiRateValue, setApiRateValue] = useState(DEFAULT_API_RATE); // Use environment-based default
+  const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
       setData((prevData) => {
-        // First, count total bubbles across all datasets for debugging
         const totalBubbles = prevData.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
 
         return {
@@ -102,9 +106,8 @@ export function App() {
             data: dataset.data
               .map((bubble) => ({
                 ...bubble,
-                x: bubble.x - 2, // Move left
+                x: bubble.x - 2,
               }))
-              // More aggressive filtering - remove bubbles that are clearly off-screen
               .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100),
           })),
         };
@@ -116,15 +119,17 @@ export function App() {
         const response = await fetch(`${API_BASE_URL}/api/check`);
         
         if (response.status === 200) {
-          const version = response.headers.get("X-Version"); // Read header value
+          const version = response.headers.get("X-Version");
           console.log(`API returned 200 with X-Version: ${version}, adding bubble.`);
+          
+          setSeenVersions(prev => new Set([...prev, version]));
     
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
               data: index === runNumberToIndex(version)
-                ? [...dataset.data, generateBubble()] // Add to matching dataset
-                : dataset.data, // No change
+                ? [...dataset.data, generateBubble()]
+                : dataset.data,
             })),
           }));
         } else {
@@ -135,18 +140,22 @@ export function App() {
       }
     };
     
-
-    const apiInterval = setInterval(fetchAndSpawnBubble, 500);
+    const apiInterval = setInterval(fetchAndSpawnBubble, apiRateValue);
 
     return () => {
       clearInterval(moveInterval);
       clearInterval(apiInterval);
     };
-  }, []);
+  }, [apiRateValue]); // Add apiRateValue as dependency
 
   const handleSliderChange = (event) => {
     const value = event.target.value;
     setSliderValue(value);
+  };
+
+  const handleApiRateChange = (event) => {
+    const value = event.target.value;
+    setApiRateValue(Number(value));
   };
 
   const handleSliderSet = async (event) => {
@@ -168,16 +177,31 @@ export function App() {
     }
   }
 
+  // Calculate percentages for each version
+  const calculateVersionPercentages = () => {
+    const totalBubbles = data.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
+    if (totalBubbles === 0) return data.datasets.map(() => 0);
+
+    return data.datasets.map(dataset => 
+      ((dataset.data.length / totalBubbles) * 100).toFixed(1)
+    );
+  };
+
+  const versionPercentages = calculateVersionPercentages();
+  
+  // Convert seen versions to array and sort
+  const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
+
   return (
-    <div style={{ height: '100vh', width: '100%', position: 'relative' }}> {/* Full height canvas */}
+    <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
       <Bubble options={options} data={data} />
 
-      {/* Floating card with slider */}
+      {/* Floating card with sliders and version stats */}
       <div
         style={{
           position: 'absolute',
           top: '20px',
-          right: '20px',
+          left: '20px',
           padding: '15px',
           background: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
@@ -186,18 +210,55 @@ export function App() {
           width: '200px',
         }}
       >
-        <label style={{ display: 'block', marginBottom: '10px' }}>
-          Error Rate: {sliderValue}%
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={sliderValue}
-          onChange={handleSliderChange}
-          onMouseUp={handleSliderSet}
-          style={{ width: '100%' }}
-        />
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '10px' }}>
+            Error Rate: {sliderValue}%
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sliderValue}
+            onChange={handleSliderChange}
+            onMouseUp={handleSliderSet}
+            style={{ width: '100%' }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '10px' }}>
+            API Call Rate: {apiRateValue}ms
+          </label>
+          <input
+            type="range"
+            min="100"
+            max="2000"
+            step="100"
+            value={apiRateValue}
+            onChange={handleApiRateChange}
+            style={{ width: '100%' }}
+          />
+        </div>
+        
+        {/* Version Statistics */}
+        <div style={{ 
+          borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
+          paddingTop: '10px',
+          fontSize: '0.9em'
+        }}>
+          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Version Distribution:</div>
+          {sortedVersions.map((version, index) => (
+            <div key={version} style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              marginBottom: '3px',
+              color: data.datasets[runNumberToIndex(version)].backgroundColor
+            }}>
+              <span>Version {version}:</span>
+              <span>{versionPercentages[runNumberToIndex(version)]}%</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
