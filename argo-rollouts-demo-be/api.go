@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ var (
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
+	buildHash = "5vj789"
 )
 
 func checkHandler(c echo.Context) error {
@@ -58,6 +60,7 @@ func setErrorRate(c echo.Context) error {
 }
 
 func main() {
+	fmt.Println("Build hash: ", buildHash)
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
