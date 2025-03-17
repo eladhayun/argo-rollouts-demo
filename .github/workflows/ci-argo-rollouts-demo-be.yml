@@ -59,7 +59,7 @@ jobs:
       - name: Update image tag in deployment
         run: |
           # Update the image tag in the deployment manifest
-          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" clusters/development/argo-rollouts-demo-be/deployment.yaml
+          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" clusters/development/argo-rollouts-demo-be/rollout.yaml
 
       - name: Commit and push changes
         run: |
