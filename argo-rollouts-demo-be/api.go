@@ -17,7 +17,7 @@ type ErrorRate struct {
 }
 
 var (
-	errorRate = 0.0 // Default error rate (0% chance of 400)
+	errorRate = 50.0 // Default error rate (0% chance of 400)
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
