@@ -50,43 +50,43 @@ export function App() {
     datasets: [
       {
         data: [],
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+        backgroundColor: 'rgba(255, 87, 87, 0.7)', // Bright red
       },
       {
         data: [],
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
+        backgroundColor: 'rgba(0, 195, 255, 0.7)', // Bright blue
       },
       {
         data: [],
-        backgroundColor: 'rgba(50, 205, 50, 0.5)',
+        backgroundColor: 'rgba(0, 255, 128, 0.7)', // Bright green
       },
       {
         data: [],
-        backgroundColor: 'rgba(129, 14, 96, 0.5)',
+        backgroundColor: 'rgba(255, 0, 255, 0.7)', // Magenta
       },
       {
         data: [],
-        backgroundColor: 'rgba(153, 102, 255, 0.5)',
+        backgroundColor: 'rgba(255, 255, 0, 0.7)', // Yellow
       },
       {
         data: [],
-        backgroundColor: 'rgba(2, 49, 80, 0.5)',
+        backgroundColor: 'rgba(0, 255, 255, 0.7)', // Cyan
       },
       {
         data: [],
-        backgroundColor: 'rgba(201, 203, 207, 0.5)',
+        backgroundColor: 'rgba(255, 165, 0, 0.7)', // Orange
       },
       {
         data: [],
-        backgroundColor: 'rgba(255, 99, 71, 0.5)',
+        backgroundColor: 'rgba(255, 0, 128, 0.7)', // Pink
       },
       {
         data: [],
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        backgroundColor: 'rgba(128, 255, 0, 0.7)', // Lime
       },
       {
         data: [],
-        backgroundColor: 'rgba(147, 112, 219, 0.5)',
+        backgroundColor: 'rgba(255, 128, 0, 0.7)', // Deep orange
       }
     ],
   });
@@ -106,13 +106,13 @@ export function App() {
             data: dataset.data
               .map((bubble) => ({
                 ...bubble,
-                x: bubble.x - 2,
+                x: bubble.x - 1, // Reduced movement per frame for smoother animation
               }))
               .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100),
           })),
         };
       });
-    }, 500);
+    }, 16); // ~60fps for smooth animation
 
     const fetchAndSpawnBubble = async () => {
       try {
