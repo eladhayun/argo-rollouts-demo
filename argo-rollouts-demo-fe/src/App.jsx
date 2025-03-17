@@ -109,7 +109,7 @@ export function App() {
           })),
         };
       });
-    }, 50);
+    }, 500);
 
     const fetchAndSpawnBubble = async () => {
       try {
