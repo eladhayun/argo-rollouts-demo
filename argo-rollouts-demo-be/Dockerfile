@@ -22,6 +22,10 @@ WORKDIR /root/
 # Copy the compiled binary from the builder stage
 COPY --from=builder /app/server .
 
+# Define build argument for version
+ARG VERSION
+ENV VERSION=$VERSION
+
 # Expose the application port
 EXPOSE 8080
 

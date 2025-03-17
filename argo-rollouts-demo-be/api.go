@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ type ErrorRate struct {
 var (
 	errorRate = 0.0 // Default error rate (0% chance of 400)
 	mu        sync.Mutex
-	version   = "1" // Default version is "1"
+	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 

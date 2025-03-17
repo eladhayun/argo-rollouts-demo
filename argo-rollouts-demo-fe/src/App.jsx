@@ -37,6 +37,16 @@ const generateBubble = (color) => ({
   r: faker.number.int({ min: 5, max: 20 }),
 });
 
+// Hash function to map SHA to dataset index (0-9)
+const hashToIndex = (sha) => {
+  let hash = 0;
+  for (let i = 0; i < sha.length; i++) {
+    hash = ((hash << 5) - hash) + sha.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash) % 10; // Map to 0-9
+};
+
 export function App() {
   const [data, setData] = useState({
     datasets: [
@@ -48,6 +58,38 @@ export function App() {
         data: [],
         backgroundColor: 'rgba(53, 162, 235, 0.5)',
       },
+      {
+        data: [],
+        backgroundColor: 'rgba(50, 205, 50, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(255, 206, 86, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(153, 102, 255, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(255, 159, 64, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(201, 203, 207, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(255, 99, 71, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+      },
+      {
+        data: [],
+        backgroundColor: 'rgba(147, 112, 219, 0.5)',
+      }
     ],
   });
 
@@ -86,10 +128,8 @@ export function App() {
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === 0 && version === "1"
-                ? [...dataset.data, generateBubble()] // Add to first dataset
-                : index === 1 && version === "2"
-                ? [...dataset.data, generateBubble()] // Add to second dataset
+              data: index === hashToIndex(version)
+                ? [...dataset.data, generateBubble()] // Add to matching dataset
                 : dataset.data, // No change
             })),
           }));

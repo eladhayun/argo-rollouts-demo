@@ -11,6 +11,7 @@ env:
   REGISTRY: playgroundacr1234.azurecr.io
   IMAGE_NAME: argo-rollouts-demo-be
   GITOPS_REPO: eladhayun/gitops
+  SHORT_SHA: ${{ github.sha | substr(0, 8) }}
   
 jobs:
   build-and-push:
@@ -36,7 +37,9 @@ jobs:
         with:
           context: ./argo-rollouts-demo-be
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}
+          build-args: |
+            VERSION=${{ env.SHORT_SHA }}
 
   update-gitops:
     needs: build-and-push
@@ -54,12 +57,12 @@ jobs:
       - name: Update image tag in deployment
         run: |
           # Update the image tag in the deployment manifest
-          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" clusters/development/argo-rollouts-demo-be/rollout.yaml
+          sed -i "s|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.SHORT_SHA }}|g" clusters/development/argo-rollouts-demo-be/rollout.yaml
 
       - name: Commit and push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add clusters/development/argo-rollouts-demo-be/rollout.yaml
-          git commit -m "chore: update backend image to ${{ github.sha }}"
+          git commit -m "chore: update backend image to ${{ env.SHORT_SHA }}"
           git push origin HEAD 
