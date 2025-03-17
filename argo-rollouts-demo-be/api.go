@@ -19,6 +19,7 @@ var (
 	errorRate = 0.0 // Default error rate (0% chance of 400)
 	mu        sync.Mutex
 	version   = "1" // Default version is "1"
+	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 func checkHandler(c echo.Context) error {
@@ -28,7 +29,7 @@ func checkHandler(c echo.Context) error {
 
 	// Determine if the response should be an error (400) based on errorRate
 	statusCode := http.StatusOK
-	if rand.Float64() < currentErrorRate {
+	if rng.Float64() < currentErrorRate {
 		statusCode = http.StatusBadRequest
 	}
 
@@ -56,12 +57,10 @@ func setErrorRate(c echo.Context) error {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	
+
 	// Enable CORS with all headers exposed
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"*"}, // Change this to specific origins for security
