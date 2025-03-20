@@ -18,27 +18,6 @@ resource "azurerm_container_registry" "acr" {
   admin_enabled       = false
 }
 
-# ACR Scope Map for retention policies
-resource "azurerm_container_registry_scope_map" "retention" {
-  name                    = "retention-policy"
-  resource_group_name     = azurerm_resource_group.rg.name
-  container_registry_name = azurerm_container_registry.acr.name
-  actions = [
-    "repositories/delete",
-    "repositories/read",
-    "repositories/write",
-    "repositories/delete-metadata"
-  ]
-}
-
-# ACR Token for retention policies
-resource "azurerm_container_registry_token" "retention" {
-  name                    = "retention-token"
-  resource_group_name     = azurerm_resource_group.rg.name
-  container_registry_name = azurerm_container_registry.acr.name
-  scope_map_id           = azurerm_container_registry_scope_map.retention.id
-}
-
 # Virtual Network
 resource "azurerm_virtual_network" "vnet" {
   name                = var.vnet_name
