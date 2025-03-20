@@ -233,14 +233,14 @@ export function App() {
           fontSize: '0.9em'
         }}>
           <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Version Distribution:</div>
-          {sortedVersions.map((version, index) => (
+          {sortedVersions.slice(-2).map((version, index) => (
             <div key={version} style={{ 
               display: 'flex', 
               justifyContent: 'space-between',
               marginBottom: '3px',
               color: data.datasets[runNumberToIndex(version)].backgroundColor
             }}>
-              <span>Version {version}:</span>
+              <span>{index === 1 ? 'Canary' : 'Stable'}:</span>
               <span>{versionPercentages[runNumberToIndex(version)]}%</span>
             </div>
           ))}
