@@ -13,6 +13,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 // Set default API rate based on environment
 const DEFAULT_API_RATE = import.meta.env.MODE === 'development' ? 2000 : 500;
 
+// Get stored values from localStorage or use defaults
+const getStoredErrorRate = () => {
+  const stored = localStorage.getItem('errorRate');
+  return stored ? parseInt(stored) : 0;
+};
+
+const getStoredApiRate = () => {
+  const stored = localStorage.getItem('apiRate');
+  return stored ? parseInt(stored) : DEFAULT_API_RATE;
+};
+
 ChartJS.register(LinearScale, PointElement, Tooltip);
 
 export const options = {
@@ -34,11 +45,10 @@ export const options = {
   },
 };
 
-const generateBubble = (color, opacity = 0.7) => ({
+const generateBubble = () => ({
   x: 150, // Start from the right
   y: faker.number.int({ min: -100, max: 100 }),
-  r: faker.number.int({ min: 5, max: 20 }),
-  opacity: opacity
+  r: faker.number.int({ min: 5, max: 20 })
 });
 
 // Map run number to dataset index (0-9)
@@ -60,8 +70,8 @@ export function App() {
     ],
   });
 
-  const [sliderValue, setSliderValue] = useState(0); // Default slider value
-  const [apiRateValue, setApiRateValue] = useState(DEFAULT_API_RATE); // Use environment-based default
+  const [sliderValue, setSliderValue] = useState(getStoredErrorRate()); // Initialize from localStorage
+  const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
 
   useEffect(() => {
@@ -76,9 +86,8 @@ export function App() {
               .map((bubble) => ({
                 ...bubble,
                 x: bubble.x - 1, // Reduced movement per frame for smoother animation
-                opacity: bubble.opacity ? Math.max(0, bubble.opacity - 0.01) : 0.7, // Fade out if opacity exists
               }))
-              .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100 && (!bubble.opacity || bubble.opacity > 0)),
+              .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100),
           })),
         };
       });
@@ -103,25 +112,25 @@ export function App() {
             })),
           }));
         } else {
-          console.log('API did not return 200, adding fading bubble.');
-          // Add bubble to the first dataset (red) with fade effect
+          console.log('API did not return 200, adding bubble to canary.');
+          // Add bubble to the second dataset (blue) without special configuration
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === 0
-                ? [...dataset.data, generateBubble('rgba(255, 87, 87, 0.7)', 0.7)]
+              data: index === 1
+                ? [...dataset.data, generateBubble()]
                 : dataset.data,
             })),
           }));
         }
       } catch (error) {
         console.error('Error fetching API:', error);
-        // Add bubble to the first dataset (red) with fade effect on error
+        // Add bubble to the second dataset (blue) without special configuration
         setData((prevData) => ({
           datasets: prevData.datasets.map((dataset, index) => ({
             ...dataset,
-            data: index === 0
-              ? [...dataset.data, generateBubble('rgba(255, 87, 87, 0.7)', 0.7)]
+            data: index === 1
+              ? [...dataset.data, generateBubble()]
               : dataset.data,
           })),
         }));
@@ -139,11 +148,13 @@ export function App() {
   const handleSliderChange = (event) => {
     const value = event.target.value;
     setSliderValue(value);
+    localStorage.setItem('errorRate', value);
   };
 
   const handleApiRateChange = (event) => {
     const value = event.target.value;
     setApiRateValue(Number(value));
+    localStorage.setItem('apiRate', value);
   };
 
   const handleSliderSet = async (event) => {
