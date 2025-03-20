@@ -133,10 +133,28 @@ export function App() {
             })),
           }));
         } else {
-          console.log('API did not return 200, skipping bubble.');
+          console.log('API did not return 200, adding bubble with red border.');
+          // Add bubble to the first dataset (red) with a red border
+          setData((prevData) => ({
+            datasets: prevData.datasets.map((dataset, index) => ({
+              ...dataset,
+              data: index === 0
+                ? [...dataset.data, { ...generateBubble(), borderColor: 'red', borderWidth: 2 }]
+                : dataset.data,
+            })),
+          }));
         }
       } catch (error) {
         console.error('Error fetching API:', error);
+        // Add bubble to the first dataset (red) with a red border on error
+        setData((prevData) => ({
+          datasets: prevData.datasets.map((dataset, index) => ({
+            ...dataset,
+            data: index === 0
+              ? [...dataset.data, { ...generateBubble(), borderColor: 'red', borderWidth: 2 }]
+              : dataset.data,
+          })),
+        }));
       }
     };
     
