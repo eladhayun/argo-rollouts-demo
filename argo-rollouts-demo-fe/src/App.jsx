@@ -34,10 +34,11 @@ export const options = {
   },
 };
 
-const generateBubble = (color) => ({
+const generateBubble = (color, opacity = 0.7) => ({
   x: 150, // Start from the right
   y: faker.number.int({ min: -100, max: 100 }),
   r: faker.number.int({ min: 5, max: 20 }),
+  opacity: opacity
 });
 
 // Map run number to dataset index (0-9)
@@ -75,8 +76,9 @@ export function App() {
               .map((bubble) => ({
                 ...bubble,
                 x: bubble.x - 1, // Reduced movement per frame for smoother animation
+                opacity: bubble.opacity ? Math.max(0, bubble.opacity - 0.01) : 0.7, // Fade out if opacity exists
               }))
-              .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100),
+              .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100 && (!bubble.opacity || bubble.opacity > 0)),
           })),
         };
       });
@@ -101,25 +103,25 @@ export function App() {
             })),
           }));
         } else {
-          console.log('API did not return 200, adding bubble with red border.');
-          // Add bubble to the first dataset (red) with a red border
+          console.log('API did not return 200, adding fading bubble.');
+          // Add bubble to the first dataset (red) with fade effect
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
               data: index === 0
-                ? [...dataset.data, { ...generateBubble(), borderColor: 'red', borderWidth: 2 }]
+                ? [...dataset.data, generateBubble('rgba(255, 87, 87, 0.7)', 0.7)]
                 : dataset.data,
             })),
           }));
         }
       } catch (error) {
         console.error('Error fetching API:', error);
-        // Add bubble to the first dataset (red) with a red border on error
+        // Add bubble to the first dataset (red) with fade effect on error
         setData((prevData) => ({
           datasets: prevData.datasets.map((dataset, index) => ({
             ...dataset,
             data: index === 0
-              ? [...dataset.data, { ...generateBubble(), borderColor: 'red', borderWidth: 2 }]
+              ? [...dataset.data, generateBubble('rgba(255, 87, 87, 0.7)', 0.7)]
               : dataset.data,
           })),
         }));
