@@ -42,7 +42,7 @@ const generateBubble = (color) => ({
 
 // Map run number to dataset index (0-9)
 const runNumberToIndex = (runNumber) => {
-  return (parseInt(runNumber) - 1) % 10; // Subtract 1 because run numbers start at 1
+  return (parseInt(runNumber) - 1) % 2; // Subtract 1 because run numbers start at 1
 };
 
 export function App() {
@@ -55,38 +55,6 @@ export function App() {
       {
         data: [],
         backgroundColor: 'rgba(0, 195, 255, 0.7)', // Bright blue
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(0, 255, 128, 0.7)', // Bright green
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(255, 0, 255, 0.7)', // Magenta
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(255, 255, 0, 0.7)', // Yellow
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(0, 255, 255, 0.7)', // Cyan
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(255, 165, 0, 0.7)', // Orange
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(255, 0, 128, 0.7)', // Pink
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(128, 255, 0, 0.7)', // Lime
-      },
-      {
-        data: [],
-        backgroundColor: 'rgba(255, 128, 0, 0.7)', // Deep orange
       }
     ],
   });
