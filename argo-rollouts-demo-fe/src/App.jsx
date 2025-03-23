@@ -75,8 +75,6 @@ export function App() {
   const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
   const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
-  const [versionCounts, setVersionCounts] = useState({}); // Track counts for each version
-  const [recentCalls, setRecentCalls] = useState([]); // Track recent API calls
 
   // Set initial error rate when component mounts
   useEffect(() => {
@@ -156,23 +154,6 @@ export function App() {
         if (version) {
           console.log(`API returned ${response.status} with X-Version: ${version}`);
           setSeenVersions(prev => new Set([...prev, version]));
-          
-          // Update recent calls with the new call
-          setRecentCalls(prev => {
-            const newCalls = [...prev, { version, timestamp: Date.now() }];
-            // Keep only the last 100 calls
-            return newCalls.slice(-100);
-          });
-          
-          // Calculate version counts based on recent calls
-          setRecentCalls(prev => {
-            const counts = {};
-            prev.forEach(call => {
-              counts[call.version] = (counts[call.version] || 0) + 1;
-            });
-            setVersionCounts(counts);
-            return prev;
-          });
         }
         
         if (response.status === 200) {
@@ -195,14 +176,7 @@ export function App() {
           }));
         }
       } catch (error) {
-        setData((prevData) => ({
-          datasets: prevData.datasets.map((dataset, index) => ({
-            ...dataset,
-            data: index === runNumberToIndex(version)
-              ? [...dataset.data, generateBubble()]
-              : dataset.data,
-          })),
-        }));
+        console.error('Error fetching and spawning bubble:', error);
       }
     };
     
@@ -246,18 +220,40 @@ export function App() {
     }
   }
 
-  // Calculate percentages for each version
+  // Calculate percentages for each version based on chart data
   const calculateVersionPercentages = () => {
-    const totalCalls = Object.values(versionCounts).reduce((sum, count) => sum + count, 0);
-    if (totalCalls === 0) return [0, 0];
+    const totalBubbles = data.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
+    if (totalBubbles === 0) return ['0.0', '0.0'];
 
     const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
     const lastTwoVersions = sortedVersions.slice(-2);
     
-    return lastTwoVersions.map(version => {
-      const count = versionCounts[version] || 0;
-      return ((count / totalCalls) * 100).toFixed(1);
+    console.log('Total bubbles:', totalBubbles);
+    console.log('Last two versions:', lastTwoVersions);
+    console.log('Dataset lengths:', data.datasets.map(d => d.data.length));
+    
+    // If we only have one version, return [100, 0] or [0, 100] depending on which dataset it's in
+    if (lastTwoVersions.length === 1) {
+      const version = lastTwoVersions[0];
+      const datasetIndex = runNumberToIndex(version);
+      const count = data.datasets[datasetIndex].data.length;
+      const percentage = ((count / totalBubbles) * 100).toFixed(1);
+      console.log(`Single version ${version} (dataset ${datasetIndex}): ${count} bubbles = ${percentage}%`);
+      return datasetIndex === 0 ? [percentage, '0.0'] : ['0.0', percentage];
+    }
+    
+    // For multiple versions, calculate percentages for both datasets
+    const percentages = ['0.0', '0.0'];
+    lastTwoVersions.forEach(version => {
+      const datasetIndex = runNumberToIndex(version);
+      const count = data.datasets[datasetIndex].data.length;
+      const percentage = ((count / totalBubbles) * 100).toFixed(1);
+      console.log(`Version ${version} (dataset ${datasetIndex}): ${count} bubbles = ${percentage}%`);
+      percentages[datasetIndex] = percentage;
     });
+    
+    console.log('Final percentages:', percentages);
+    return percentages;
   };
 
   const versionPercentages = calculateVersionPercentages();
@@ -383,17 +379,24 @@ export function App() {
           fontSize: '0.9em'
         }}>
           <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Version Distribution:</div>
-          {sortedVersions.slice(-2).map((version, index) => (
-            <div key={version} style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              marginBottom: '3px',
-              color: data.datasets[runNumberToIndex(version)].backgroundColor
-            }}>
-              <span>{index === 1 ? 'Canary' : 'Stable'}:</span>
-              <span>{versionPercentages[runNumberToIndex(version)]}%</span>
-            </div>
-          ))}
+          {sortedVersions.length > 0 ? (
+            sortedVersions.slice(-2).map((version) => {
+              const datasetIndex = runNumberToIndex(version);
+              return (
+                <div key={version} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  marginBottom: '3px',
+                  color: data.datasets[datasetIndex].backgroundColor
+                }}>
+                  <span>{datasetIndex === 0 ? 'Stable' : 'Canary'}:</span>
+                  <span>{versionPercentages[datasetIndex]}%</span>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ color: 'rgba(255, 255, 255, 0.7)' }}>No versions detected</div>
+          )}
           <div style={{ 
             borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
             marginTop: '10px',

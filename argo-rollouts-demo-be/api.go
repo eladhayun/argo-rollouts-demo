@@ -22,7 +22,7 @@ var (
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj702"
+	buildHash = "5vj703"
 )
 
 func checkHandler(c echo.Context) error {
