@@ -77,6 +77,29 @@ export function App() {
   const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
   const [versionCounts, setVersionCounts] = useState({}); // Track counts for each version
 
+  // Set initial error rate when component mounts
+  useEffect(() => {
+    const setInitialErrorRate = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: Number(sliderValue) }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to set initial error rate:', sliderValue);
+        } else {
+          console.log('Successfully set initial error rate:', sliderValue);
+        }
+      } catch (error) {
+        console.error('Error setting initial error rate:', error);
+      }
+    };
+
+    setInitialErrorRate();
+  }, []); // Empty dependency array means this runs once on mount
+
   useEffect(() => {
     const moveInterval = setInterval(() => {
       setData((prevData) => {
