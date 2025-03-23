@@ -305,7 +305,7 @@ export function App() {
           top: '20px',
           left: '20px',
           padding: '15px',
-          background: 'rgba(0, 0, 0, 0.7)',
+          background: 'rgba(0, 0, 0,r 0.7)',
           color: 'white',
           borderRadius: '10px',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
