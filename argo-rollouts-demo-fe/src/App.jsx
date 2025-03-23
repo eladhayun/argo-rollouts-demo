@@ -4,8 +4,9 @@ import {
   LinearScale,
   PointElement,
   Tooltip,
+  ArcElement,
 } from 'chart.js';
-import { Bubble } from 'react-chartjs-2';
+import { Bubble, Pie } from 'react-chartjs-2';
 import { faker } from '@faker-js/faker';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -24,7 +25,7 @@ const getStoredApiRate = () => {
   return stored ? parseInt(stored) : DEFAULT_API_RATE;
 };
 
-ChartJS.register(LinearScale, PointElement, Tooltip);
+ChartJS.register(LinearScale, PointElement, Tooltip, ArcElement);
 
 export const options = {
   responsive: true, // Ensure the chart resizes
@@ -100,12 +101,14 @@ export function App() {
         
         setErrorStats(prev => ({ total: prev.total + 1, errors: prev.errors + (response.status !== 200 ? 1 : 0) }));
         
-        if (response.status === 200) {
-          const version = response.headers.get("X-Version");
-          console.log(`API returned 200 with X-Version: ${version}, adding bubble.`);
-          
+        // Get version from headers regardless of status code
+        const version = response.headers.get("X-Version");
+        if (version) {
+          console.log(`API returned ${response.status} with X-Version: ${version}`);
           setSeenVersions(prev => new Set([...prev, version]));
-    
+        }
+        
+        if (response.status === 200) {
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
@@ -194,6 +197,55 @@ export function App() {
   // Convert seen versions to array and sort
   const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
 
+  const pieChartData = {
+    labels: ['Successful', 'Failed'],
+    datasets: [
+      {
+        data: [
+          errorStats.total - errorStats.errors,
+          errorStats.errors
+        ],
+        backgroundColor: [
+          'rgba(0, 195, 255, 0.7)',  // Blue for successful
+          'rgba(255, 87, 87, 0.7)',  // Red for failed
+        ],
+        borderColor: [
+          'rgba(0, 195, 255, 1)',
+          'rgba(255, 87, 87, 1)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const pieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: 'white',
+          padding: 20,
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          label: function(context) {
+            const value = context.raw;
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${context.label}: ${value} (${percentage}%)`;
+          }
+        }
+      }
+    }
+  };
+
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
       <Bubble options={options} data={data} />
@@ -267,26 +319,20 @@ export function App() {
           }}>
             <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
             <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              marginBottom: '3px',
+              height: '150px',
+              position: 'relative',
+              marginBottom: '10px'
             }}>
-              <span>Total Calls:</span>
-              <span>{errorStats.total}</span>
+              <Pie data={pieChartData} options={pieChartOptions} />
             </div>
             <div style={{ 
-              display: 'flex', 
+              display: 'flex',
               justifyContent: 'space-between',
-              marginBottom: '3px',
+              fontSize: '0.8em',
+              color: 'rgba(255, 255, 255, 0.7)'
             }}>
-              <span>Failed Calls:</span>
-              <span>{errorStats.errors}</span>
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-            }}>
-              <span>Error Rate:</span>
+              <span>Total Calls: {errorStats.total}</span>
+              <span>Failed: {errorStats.errors}</span>
               <span>{errorStats.total > 0 ? ((errorStats.errors / errorStats.total) * 100).toFixed(1) : '0'}%</span>
             </div>
           </div>
