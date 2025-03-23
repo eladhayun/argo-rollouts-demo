@@ -61,11 +61,11 @@ export function App() {
     datasets: [
       {
         data: [],
-        backgroundColor: 'rgba(255, 87, 87, 0.7)', // Bright red
+        backgroundColor: 'rgba(255, 2, 145, 0.7)',
       },
       {
         data: [],
-        backgroundColor: 'rgba(0, 195, 255, 0.7)', // Bright blue
+        backgroundColor: 'rgba(0, 195, 255, 0.7)',
       }
     ],
   });
@@ -73,6 +73,7 @@ export function App() {
   const [sliderValue, setSliderValue] = useState(getStoredErrorRate()); // Initialize from localStorage
   const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
+  const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
@@ -96,6 +97,8 @@ export function App() {
     const fetchAndSpawnBubble = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/check`);
+        
+        setErrorStats(prev => ({ total: prev.total + 1, errors: prev.errors + (response.status !== 200 ? 1 : 0) }));
         
         if (response.status === 200) {
           const version = response.headers.get("X-Version");
@@ -209,7 +212,7 @@ export function App() {
           width: '200px',
         }}
       >
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '15px', display: 'none' }}>
           <label style={{ display: 'block', marginBottom: '10px' }}>
             Error Rate: {sliderValue}%
           </label>
@@ -257,6 +260,36 @@ export function App() {
               <span>{versionPercentages[runNumberToIndex(version)]}%</span>
             </div>
           ))}
+          <div style={{ 
+            borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
+            marginTop: '10px',
+            paddingTop: '10px'
+          }}>
+            <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              marginBottom: '3px',
+            }}>
+              <span>Total Calls:</span>
+              <span>{errorStats.total}</span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              marginBottom: '3px',
+            }}>
+              <span>Failed Calls:</span>
+              <span>{errorStats.errors}</span>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+            }}>
+              <span>Error Rate:</span>
+              <span>{errorStats.total > 0 ? ((errorStats.errors / errorStats.total) * 100).toFixed(1) : '0'}%</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
