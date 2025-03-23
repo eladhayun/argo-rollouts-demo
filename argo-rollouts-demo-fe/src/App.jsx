@@ -146,6 +146,12 @@ export function App() {
         
         // Get version from headers regardless of status code
         const version = response.headers.get("X-Version");
+
+        if (!version) {
+          console.error('No version header found in response');
+          return;
+        }
+
         if (version) {
           console.log(`API returned ${response.status} with X-Version: ${version}`);
           setSeenVersions(prev => new Set([...prev, version]));
