@@ -82,13 +82,15 @@ export function App() {
     const initializeErrorRate = async () => {
       try {
         // First try to get the current error rate from the API
+        console.log('Fetching current error rate from API...');
         const response = await fetch(`${API_BASE_URL}/api/error-rate`);
         if (response.ok) {
           const data = await response.json();
+          console.log('Received current error rate from API:', data.value);
           setSliderValue(data.value);
         } else {
           // Fallback to localStorage if API call fails
-          console.warn('Failed to fetch error rate from API, using localStorage value');
+          console.warn('Failed to fetch error rate from API, using localStorage value:', sliderValue);
         }
       } catch (error) {
         // Fallback to localStorage if API call fails
@@ -97,6 +99,7 @@ export function App() {
 
       // Set the error rate on the backend
       try {
+        console.log('Setting initial error rate on backend:', sliderValue);
         const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -104,7 +107,7 @@ export function App() {
         });
 
         if (!response.ok) {
-          console.error('Failed to set initial error rate:', sliderValue);
+          console.error('Failed to set initial error rate:', sliderValue, 'Response:', response.status);
         } else {
           console.log('Successfully set initial error rate:', sliderValue);
         }
@@ -205,6 +208,7 @@ export function App() {
 
   const handleSliderSet = async (event) => {
     const value = event.target.value;
+    console.log(`Setting error rate to ${value}%`);
     try {
       const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
         method: 'POST',
@@ -213,12 +217,12 @@ export function App() {
       });
 
       if (!response.ok) {
-        console.error('Failed to send value:', value);
+        console.error('Failed to set error rate:', value, 'Response:', response.status);
       } else {
-        console.log('Successfully sent value:', value);
+        console.log('Successfully set error rate to:', value);
       }
     } catch (error) {
-      console.error('Error sending value:', error);
+      console.error('Error setting error rate:', error);
     }
   }
 
