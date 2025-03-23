@@ -76,6 +76,7 @@ export function App() {
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
   const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
   const [versionCounts, setVersionCounts] = useState({}); // Track counts for each version
+  const [recentCalls, setRecentCalls] = useState([]); // Track recent API calls
 
   // Set initial error rate when component mounts
   useEffect(() => {
@@ -155,10 +156,23 @@ export function App() {
         if (version) {
           console.log(`API returned ${response.status} with X-Version: ${version}`);
           setSeenVersions(prev => new Set([...prev, version]));
-          setVersionCounts(prev => ({
-            ...prev,
-            [version]: (prev[version] || 0) + 1
-          }));
+          
+          // Update recent calls with the new call
+          setRecentCalls(prev => {
+            const newCalls = [...prev, { version, timestamp: Date.now() }];
+            // Keep only the last 100 calls
+            return newCalls.slice(-100);
+          });
+          
+          // Calculate version counts based on recent calls
+          setRecentCalls(prev => {
+            const counts = {};
+            prev.forEach(call => {
+              counts[call.version] = (counts[call.version] || 0) + 1;
+            });
+            setVersionCounts(counts);
+            return prev;
+          });
         }
         
         if (response.status === 200) {
