@@ -5,9 +5,11 @@ import {
   PointElement,
   Tooltip,
   ArcElement,
+  Legend,
 } from 'chart.js';
 import { Bubble, Pie } from 'react-chartjs-2';
 import { faker } from '@faker-js/faker';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -25,7 +27,7 @@ const getStoredApiRate = () => {
   return stored ? parseInt(stored) : DEFAULT_API_RATE;
 };
 
-ChartJS.register(LinearScale, PointElement, Tooltip, ArcElement);
+ChartJS.register(LinearScale, PointElement, Tooltip, ArcElement, Legend, ChartDataLabels);
 
 export const options = {
   responsive: true, // Ensure the chart resizes
@@ -34,6 +36,7 @@ export const options = {
   plugins: {
     legend: { display: false }, // Hide legend
     tooltip: { enabled: false }, // Disable tooltip on hover
+    datalabels: { display: false }, // Disable datalabels for bubble chart
   },
   elements: {
     point: {
@@ -131,7 +134,15 @@ export function App() {
                 ...bubble,
                 x: bubble.x - 1, // Reduced movement per frame for smoother animation
               }))
-              .filter((bubble) => bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100),
+              .filter((bubble) => {
+                // Keep only bubbles that are in view
+                const inView = bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100;
+                // If we have more than 100 bubbles, keep only the last 100
+                if (dataset.data.length > 100) {
+                  return inView && dataset.data.indexOf(bubble) >= dataset.data.length - 100;
+                }
+                return inView;
+              }),
           })),
         };
       });
@@ -265,17 +276,18 @@ export function App() {
     labels: ['Successful', 'Failed'],
     datasets: [
       {
+        label: 'Error Rate Distribution',
         data: [
           errorStats.total - errorStats.errors,
           errorStats.errors
         ],
         backgroundColor: [
-          'rgba(0, 195, 255, 0.7)',  // Blue for successful
-          'rgba(255, 87, 87, 0.7)',  // Red for failed
+          'rgba(8, 118, 23, 0.3)',  // Blue for successful
+          'rgba(255, 87, 87, 0.3)',  // Red for failed
         ],
         borderColor: [
-          'rgba(0, 195, 255, 1)',
-          'rgba(255, 87, 87, 1)',
+          'rgba(70, 219, 90, 0.7)',
+          'rgba(255, 87, 87, 0.7)',
         ],
         borderWidth: 1,
       },
@@ -287,13 +299,18 @@ export function App() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
+        display: true,
         position: 'bottom',
         labels: {
           color: 'white',
           padding: 20,
           font: {
             size: 12
-          }
+          },
+          usePointStyle: true,
+          pointStyle: 'circle',
+          boxWidth: 8,
+          boxHeight: 8
         }
       },
       tooltip: {
@@ -302,9 +319,21 @@ export function App() {
           label: function(context) {
             const value = context.raw;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
+            const percentage = Math.round((value / total) * 100);
             return `${context.label}: ${value} (${percentage}%)`;
           }
+        }
+      },
+      datalabels: {
+        color: 'white',
+        font: {
+          weight: 'bold',
+          size: 12
+        },
+        formatter: (value, context) => {
+          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+          const percentage = Math.round((value / total) * 100);
+          return `${percentage}%`;
         }
       }
     }
@@ -380,20 +409,72 @@ export function App() {
         }}>
           <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Version Distribution:</div>
           {sortedVersions.length > 0 ? (
-            sortedVersions.slice(-2).map((version) => {
-              const datasetIndex = runNumberToIndex(version);
-              return (
-                <div key={version} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  marginBottom: '3px',
-                  color: data.datasets[datasetIndex].backgroundColor
-                }}>
-                  <span>{datasetIndex === 0 ? 'Stable' : 'Canary'}:</span>
-                  <span>{versionPercentages[datasetIndex]}%</span>
-                </div>
-              );
-            })
+            <div style={{ 
+              height: '150px',
+              position: 'relative',
+              marginBottom: '10px'
+            }}>
+              <Pie 
+                data={{
+                  labels: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2]) 
+                    ? ['Stable', 'Canary']
+                    : ['Canary', 'Stable'],
+                  datasets: [{
+                    data: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2])
+                      ? [
+                          data.datasets[0].data.length,
+                          data.datasets[1].data.length
+                        ]
+                      : [
+                          data.datasets[1].data.length,
+                          data.datasets[0].data.length
+                        ],
+                    backgroundColor: [
+                      data.datasets[0].backgroundColor,
+                      data.datasets[1].backgroundColor
+                    ],
+                    borderColor: [
+                      data.datasets[0].backgroundColor.replace('0.7', '1'),
+                      data.datasets[1].backgroundColor.replace('0.7', '1')
+                    ],
+                    borderWidth: 1,
+                  }]
+                }} 
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      display: true,
+                      position: 'bottom',
+                      labels: {
+                        color: 'white',
+                        padding: 20,
+                        font: {
+                          size: 12
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 8,
+                        boxHeight: 8
+                      }
+                    },
+                    datalabels: {
+                      color: 'white',
+                      font: {
+                        weight: 'bold',
+                        size: 12
+                      },
+                      formatter: (value, context) => {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = Math.round((value / total) * 100);
+                        return `${percentage}%`;
+                      }
+                    }
+                  }
+                }} 
+              />
+            </div>
           ) : (
             <div style={{ color: 'rgba(255, 255, 255, 0.7)' }}>No versions detected</div>
           )}
@@ -416,9 +497,6 @@ export function App() {
               fontSize: '0.8em',
               color: 'rgba(255, 255, 255, 0.7)'
             }}>
-              <span>Total Calls: {errorStats.total}</span>
-              <span>Failed: {errorStats.errors}</span>
-              <span>{errorStats.total > 0 ? ((errorStats.errors / errorStats.total) * 100).toFixed(1) : '0'}%</span>
             </div>
           </div>
         </div>
