@@ -9,7 +9,6 @@ import {
 } from 'chart.js';
 import { Bubble, Pie } from 'react-chartjs-2';
 import { faker } from '@faker-js/faker';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -27,7 +26,7 @@ const getStoredApiRate = () => {
   return stored ? parseInt(stored) : DEFAULT_API_RATE;
 };
 
-ChartJS.register(LinearScale, PointElement, Tooltip, ArcElement, Legend, ChartDataLabels);
+ChartJS.register(LinearScale, PointElement, Tooltip, ArcElement, Legend);
 
 export const options = {
   responsive: true, // Ensure the chart resizes
@@ -36,7 +35,6 @@ export const options = {
   plugins: {
     legend: { display: false }, // Hide legend
     tooltip: { enabled: false }, // Disable tooltip on hover
-    datalabels: { display: false }, // Disable datalabels for bubble chart
   },
   elements: {
     point: {
@@ -282,8 +280,8 @@ export function App() {
           errorStats.errors
         ],
         backgroundColor: [
-          'rgba(8, 118, 23, 0.3)',
-          'rgba(255, 87, 87, 0.3)',
+          'rgba(30, 196, 52, 0.3)',
+          'rgba(240, 126, 126, 0.6)',
         ],
         borderColor: [
           'rgba(70, 219, 90, 0.7)',
@@ -322,18 +320,6 @@ export function App() {
             const percentage = Math.round((value / total) * 100);
             return `${context.label}: ${value} (${percentage}%)`;
           }
-        }
-      },
-      datalabels: {
-        color: 'white',
-        font: {
-          weight: 'bold',
-          size: 12
-        },
-        formatter: (value, context) => {
-          const total = context.dataset.data.reduce((a, b) => a + b, 0);
-          const percentage = Math.round((value / total) * 100);
-          return `${percentage}%`;
         }
       }
     }
@@ -457,18 +443,6 @@ export function App() {
                         pointStyle: 'circle',
                         boxWidth: 8,
                         boxHeight: 8
-                      }
-                    },
-                    datalabels: {
-                      color: 'white',
-                      font: {
-                        weight: 'bold',
-                        size: 12
-                      },
-                      formatter: (value, context) => {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = Math.round((value / total) * 100);
-                        return `${percentage}%`;
                       }
                     }
                   }
