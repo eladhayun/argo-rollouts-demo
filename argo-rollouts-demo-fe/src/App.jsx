@@ -282,14 +282,14 @@ export function App() {
           errorStats.errors
         ],
         backgroundColor: [
-          'rgba(8, 118, 23, 0.3)',  // Blue for successful
-          'rgba(255, 87, 87, 0.3)',  // Red for failed
+          'rgba(8, 118, 23, 0.3)',
+          'rgba(255, 87, 87, 0.3)',
         ],
         borderColor: [
           'rgba(70, 219, 90, 0.7)',
           'rgba(255, 87, 87, 0.7)',
         ],
-        borderWidth: 1,
+        borderWidth: 0,
       },
     ],
   };
@@ -437,7 +437,7 @@ export function App() {
                       data.datasets[0].backgroundColor.replace('0.7', '1'),
                       data.datasets[1].backgroundColor.replace('0.7', '1')
                     ],
-                    borderWidth: 1,
+                    borderWidth: 0,
                   }]
                 }} 
                 options={{
