@@ -75,6 +75,7 @@ export function App() {
   const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
   const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
+  const [versionCounts, setVersionCounts] = useState({}); // Track counts for each version
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
@@ -106,6 +107,10 @@ export function App() {
         if (version) {
           console.log(`API returned ${response.status} with X-Version: ${version}`);
           setSeenVersions(prev => new Set([...prev, version]));
+          setVersionCounts(prev => ({
+            ...prev,
+            [version]: (prev[version] || 0) + 1
+          }));
         }
         
         if (response.status === 200) {
@@ -118,24 +123,20 @@ export function App() {
             })),
           }));
         } else {
-          console.log('API did not return 200, adding bubble to canary.');
-          // Add bubble to the second dataset (blue) without special configuration
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === 1
+              data: index === runNumberToIndex(version)
                 ? [...dataset.data, generateBubble()]
                 : dataset.data,
             })),
           }));
         }
       } catch (error) {
-        console.error('Error fetching API:', error);
-        // Add bubble to the second dataset (blue) without special configuration
         setData((prevData) => ({
           datasets: prevData.datasets.map((dataset, index) => ({
             ...dataset,
-            data: index === 1
+            data: index === runNumberToIndex(version)
               ? [...dataset.data, generateBubble()]
               : dataset.data,
           })),
@@ -184,12 +185,16 @@ export function App() {
 
   // Calculate percentages for each version
   const calculateVersionPercentages = () => {
-    const totalBubbles = data.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
-    if (totalBubbles === 0) return data.datasets.map(() => 0);
+    const totalCalls = Object.values(versionCounts).reduce((sum, count) => sum + count, 0);
+    if (totalCalls === 0) return [0, 0];
 
-    return data.datasets.map(dataset => 
-      ((dataset.data.length / totalBubbles) * 100).toFixed(1)
-    );
+    const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
+    const lastTwoVersions = sortedVersions.slice(-2);
+    
+    return lastTwoVersions.map(version => {
+      const count = versionCounts[version] || 0;
+      return ((count / totalCalls) * 100).toFixed(1);
+    });
   };
 
   const versionPercentages = calculateVersionPercentages();
@@ -264,21 +269,6 @@ export function App() {
           width: '200px',
         }}
       >
-        <div style={{ marginBottom: '15px', display: 'none' }}>
-          <label style={{ display: 'block', marginBottom: '10px' }}>
-            Error Rate: {sliderValue}%
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sliderValue}
-            onChange={handleSliderChange}
-            onMouseUp={handleSliderSet}
-            style={{ width: '100%' }}
-          />
-        </div>
-
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '10px' }}>
             API Call Rate: {apiRateValue}ms
@@ -293,7 +283,22 @@ export function App() {
             style={{ width: '100%' }}
           />
         </div>
-        
+
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', marginBottom: '10px' }}>
+            Error Rate: {sliderValue}%
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sliderValue}
+            onChange={handleSliderChange}
+            onMouseUp={handleSliderSet}
+            style={{ width: '100%' }}
+          />
+        </div>
+
         {/* Version Statistics */}
         <div style={{ 
           borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
