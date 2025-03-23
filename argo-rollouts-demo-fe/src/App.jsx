@@ -79,7 +79,23 @@ export function App() {
 
   // Set initial error rate when component mounts
   useEffect(() => {
-    const setInitialErrorRate = async () => {
+    const initializeErrorRate = async () => {
+      try {
+        // First try to get the current error rate from the API
+        const response = await fetch(`${API_BASE_URL}/api/error-rate`);
+        if (response.ok) {
+          const data = await response.json();
+          setSliderValue(data.value);
+        } else {
+          // Fallback to localStorage if API call fails
+          console.warn('Failed to fetch error rate from API, using localStorage value');
+        }
+      } catch (error) {
+        // Fallback to localStorage if API call fails
+        console.warn('Error fetching error rate from API, using localStorage value:', error);
+      }
+
+      // Set the error rate on the backend
       try {
         const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
           method: 'POST',
@@ -97,7 +113,7 @@ export function App() {
       }
     };
 
-    setInitialErrorRate();
+    initializeErrorRate();
   }, []); // Empty dependency array means this runs once on mount
 
   useEffect(() => {
@@ -293,9 +309,7 @@ export function App() {
         }}
       >
         <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '10px' }}>
-            API Call Rate: {apiRateValue}ms
-          </label>
+          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>API Call Rate:</div>
           <input
             type="range"
             min="100"
@@ -305,12 +319,19 @@ export function App() {
             onChange={handleApiRateChange}
             style={{ width: '100%' }}
           />
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            marginTop: '3px',
+            fontSize: '0.9em',
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>
+            <span>{apiRateValue}ms</span>
+          </div>
         </div>
 
         <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '10px' }}>
-            Error Rate: {sliderValue}%
-          </label>
+          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
           <input
             type="range"
             min="0"
@@ -320,6 +341,15 @@ export function App() {
             onMouseUp={handleSliderSet}
             style={{ width: '100%' }}
           />
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            marginTop: '3px',
+            fontSize: '0.9em',
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>
+            <span>{sliderValue}%</span>
+          </div>
         </div>
 
         {/* Version Statistics */}

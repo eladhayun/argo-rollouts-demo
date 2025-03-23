@@ -59,6 +59,14 @@ func setErrorRate(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "Error rate updated"})
 }
 
+func getErrorRate(c echo.Context) error {
+	mu.Lock()
+	currentRate := errorRate * 100.0 // Convert fraction back to percentage
+	mu.Unlock()
+
+	return c.JSON(http.StatusOK, ErrorRate{Value: currentRate})
+}
+
 func main() {
 	fmt.Println("Build hash:", buildHash)
 	e := echo.New()
@@ -76,6 +84,7 @@ func main() {
 
 	e.GET("/api/healthz", healthzHandler)
 	e.GET("/api/check", checkHandler)
+	e.GET("/api/error-rate", getErrorRate)
 	e.POST("/api/set-error-rate", setErrorRate)
 
 	e.Logger.Fatal(e.Start(":8080"))
