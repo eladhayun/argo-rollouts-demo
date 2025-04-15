@@ -88,6 +88,6 @@ variable "tags" {
   default = {
     environment = "playground"
     project     = "demos-pocs"
-    owner       = "your-name"
+    owner       = "elad.hayun"
   }
 }
