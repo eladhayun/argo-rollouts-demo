@@ -379,28 +379,6 @@ export function App() {
           </div>
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sliderValue}
-            onChange={handleSliderChange}
-            onMouseUp={handleSliderSet}
-            style={{ width: '100%' }}
-          />
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            marginTop: '3px',
-            fontSize: '0.9em',
-            color: 'rgba(255, 255, 255, 0.7)'
-          }}>
-            <span>{sliderValue}%</span>
-          </div>
-        </div>
-
         {/* Version Statistics */}
         <div style={{ 
           borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
