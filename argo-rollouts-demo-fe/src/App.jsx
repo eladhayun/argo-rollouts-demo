@@ -65,11 +65,11 @@ export function App() {
     datasets: [
       {
         data: [],
-        backgroundColor: 'rgba(255, 2, 145, 0.7)',
+        backgroundColor: 'rgba(0, 195, 255, 0.7)', // Blue for stable
       },
       {
         data: [],
-        backgroundColor: 'rgba(0, 195, 255, 0.7)',
+        backgroundColor: 'rgba(255, 2, 145, 0.7)', // Pink for canary
       }
     ],
   });
