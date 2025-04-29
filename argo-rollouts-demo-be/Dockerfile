@@ -4,14 +4,11 @@ FROM golang:latest AS builder
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy go mod file
-COPY go.mod ./
+# Copy the Go source code
+COPY . .
 
 # Download dependencies
-RUN go mod download
-
-# Copy the rest of the source code
-COPY . .
+RUN go mod tidy
 
 # Build the Go application, specifying the correct filename
 RUN go build -o server api.go
