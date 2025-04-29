@@ -78,11 +78,16 @@ export function App() {
   const runNumberToIndex = (runNumber) => {
     const versionNum = parseInt(runNumber);
     const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
-    if (sortedVersions.length < 2) return 0; // If only one version, treat it as stable
     
-    // If this is the lower version number, it's stable (index 0)
-    // If this is the higher version number, it's canary (index 1)
-    return versionNum === parseInt(sortedVersions[0]) ? 0 : 1;
+    // If we have two versions, the lower one is stable (0), higher is canary (1)
+    if (sortedVersions.length >= 2) {
+      const minVersion = parseInt(sortedVersions[0]);
+      const maxVersion = parseInt(sortedVersions[sortedVersions.length - 1]);
+      return versionNum === minVersion ? 0 : 1;
+    }
+    
+    // If we only have one version, treat it as stable
+    return 0;
   };
 
   // Set initial error rate when component mounts
