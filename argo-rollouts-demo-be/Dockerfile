@@ -4,8 +4,8 @@ FROM golang:latest AS builder
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy go mod and sum files
-COPY go.mod go.sum ./
+# Copy go mod file
+COPY go.mod ./
 
 # Download dependencies
 RUN go mod download
