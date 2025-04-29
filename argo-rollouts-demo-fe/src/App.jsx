@@ -408,12 +408,12 @@ export function App() {
                           data.datasets[0].data.length
                         ],
                     backgroundColor: [
-                      data.datasets[0].backgroundColor,
-                      data.datasets[1].backgroundColor
+                      'rgba(0, 195, 255, 0.7)', // Blue for stable
+                      'rgba(255, 2, 145, 0.7)', // Pink for canary
                     ],
                     borderColor: [
-                      data.datasets[0].backgroundColor.replace('0.7', '1'),
-                      data.datasets[1].backgroundColor.replace('0.7', '1')
+                      'rgba(0, 195, 255, 1)', // Blue for stable
+                      'rgba(255, 2, 145, 1)', // Pink for canary
                     ],
                     borderWidth: 0,
                   }]
