@@ -416,22 +416,27 @@ export function App() {
             }}>
               <Pie 
                 data={{
-                  labels: Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b)),
+                  labels: Array.from(seenVersions)
+                    .sort((a, b) => parseInt(a) - parseInt(b))
+                    .slice(-2), // Only take the last two versions
                   datasets: [{
                     data: Array.from(seenVersions)
                       .sort((a, b) => parseInt(a) - parseInt(b))
+                      .slice(-2) // Only take the last two versions
                       .map(version => {
                         const datasetIndex = runNumberToIndex(version);
                         return data.datasets[datasetIndex].data.length;
                       }),
                     backgroundColor: Array.from(seenVersions)
                       .sort((a, b) => parseInt(a) - parseInt(b))
+                      .slice(-2) // Only take the last two versions
                       .map(version => {
                         const datasetIndex = runNumberToIndex(version);
                         return data.datasets[datasetIndex].backgroundColor;
                       }),
                     borderColor: Array.from(seenVersions)
                       .sort((a, b) => parseInt(a) - parseInt(b))
+                      .slice(-2) // Only take the last two versions
                       .map(version => {
                         const datasetIndex = runNumberToIndex(version);
                         return data.datasets[datasetIndex].backgroundColor.replace('0.7', '1');
