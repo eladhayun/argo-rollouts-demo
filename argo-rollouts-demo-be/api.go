@@ -18,11 +18,11 @@ type ErrorRate struct {
 }
 
 var (
-	errorRate = 0.0 // Default error rate (0% chance of 400)
+	errorRate = 0.9 // Default error rate (0% chance of 400)
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj717"
+	buildHash = "5vj718"
 )
 
 func checkHandler(c echo.Context) error {

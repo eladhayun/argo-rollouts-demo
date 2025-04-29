@@ -379,28 +379,6 @@ export function App() {
           </div>
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sliderValue}
-            onChange={handleSliderChange}
-            onMouseUp={handleSliderSet}
-            style={{ width: '100%' }}
-          />
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            marginTop: '3px',
-            fontSize: '0.9em',
-            color: 'rgba(255, 255, 255, 0.7)'
-          }}>
-            <span>{sliderValue}%</span>
-          </div>
-        </div>
-
         {/* Version Statistics */}
         <div style={{ 
           borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
@@ -485,26 +463,21 @@ export function App() {
           ) : (
             <div style={{ color: 'rgba(255, 255, 255, 0.7)' }}>No versions detected</div>
           )}
+        </div>
+
+        {/* Error Rate Statistics */}
+        <div style={{ 
+          borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
+          marginTop: '10px',
+          paddingTop: '10px'
+        }}>
+          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
           <div style={{ 
-            borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
-            marginTop: '10px',
-            paddingTop: '10px'
+            height: '150px',
+            position: 'relative',
+            marginBottom: '10px'
           }}>
-            <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
-            <div style={{ 
-              height: '150px',
-              position: 'relative',
-              marginBottom: '10px'
-            }}>
-              <Pie data={pieChartData} options={pieChartOptions} />
-            </div>
-            <div style={{ 
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.8em',
-              color: 'rgba(255, 255, 255, 0.7)'
-            }}>
-            </div>
+            <Pie data={pieChartData} options={pieChartOptions} />
           </div>
         </div>
       </div>
