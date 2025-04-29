@@ -98,24 +98,6 @@ export function App() {
         // Fallback to localStorage if API call fails
         console.warn('Error fetching error rate from API, using localStorage value:', error);
       }
-
-      // Set the error rate on the backend
-      try {
-        console.log('Setting initial error rate on backend:', sliderValue);
-        const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value: Number(sliderValue) }),
-        });
-
-        if (!response.ok) {
-          console.error('Failed to set initial error rate:', sliderValue, 'Response:', response.status);
-        } else {
-          console.log('Successfully set initial error rate:', sliderValue);
-        }
-      } catch (error) {
-        console.error('Error setting initial error rate:', error);
-      }
     };
 
     initializeErrorRate();
