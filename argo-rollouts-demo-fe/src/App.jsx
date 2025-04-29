@@ -55,11 +55,6 @@ const generateBubble = () => ({
   r: faker.number.int({ min: 5, max: 20 })
 });
 
-// Map run number to dataset index (0-9)
-const runNumberToIndex = (runNumber) => {
-  return (parseInt(runNumber) - 1) % 2; // Subtract 1 because run numbers start at 1
-};
-
 export function App() {
   const [data, setData] = useState({
     datasets: [
@@ -78,6 +73,17 @@ export function App() {
   const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
   const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
+
+  // Map run number to dataset index (0-9)
+  const runNumberToIndex = (runNumber) => {
+    const versionNum = parseInt(runNumber);
+    const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
+    if (sortedVersions.length < 2) return 0; // If only one version, treat it as stable
+    
+    // If this is the lower version number, it's stable (index 0)
+    // If this is the higher version number, it's canary (index 1)
+    return versionNum === parseInt(sortedVersions[0]) ? 0 : 1;
+  };
 
   // Set initial error rate when component mounts
   useEffect(() => {
@@ -394,18 +400,18 @@ export function App() {
             }}>
               <Pie 
                 data={{
-                  labels: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2]) 
+                  labels: sortedVersions.length > 1 
                     ? ['Stable', 'Canary']
-                    : ['Canary', 'Stable'],
+                    : ['Stable', 'Canary'],
                   datasets: [{
-                    data: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2])
+                    data: sortedVersions.length > 1
                       ? [
                           data.datasets[0].data.length,
                           data.datasets[1].data.length
                         ]
                       : [
-                          data.datasets[1].data.length,
-                          data.datasets[0].data.length
+                          data.datasets[0].data.length,
+                          data.datasets[1].data.length
                         ],
                     backgroundColor: [
                       'rgba(0, 195, 255, 0.7)', // Blue for stable
