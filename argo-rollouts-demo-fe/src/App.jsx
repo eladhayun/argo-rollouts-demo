@@ -416,27 +416,26 @@ export function App() {
             }}>
               <Pie 
                 data={{
-                  labels: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2]) 
-                    ? ['Stable', 'Canary']
-                    : ['Canary', 'Stable'],
+                  labels: Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b)),
                   datasets: [{
-                    data: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2])
-                      ? [
-                          data.datasets[0].data.length,
-                          data.datasets[1].data.length
-                        ]
-                      : [
-                          data.datasets[1].data.length,
-                          data.datasets[0].data.length
-                        ],
-                    backgroundColor: [
-                      data.datasets[0].backgroundColor,
-                      data.datasets[1].backgroundColor
-                    ],
-                    borderColor: [
-                      data.datasets[0].backgroundColor.replace('0.7', '1'),
-                      data.datasets[1].backgroundColor.replace('0.7', '1')
-                    ],
+                    data: Array.from(seenVersions)
+                      .sort((a, b) => parseInt(a) - parseInt(b))
+                      .map(version => {
+                        const datasetIndex = runNumberToIndex(version);
+                        return data.datasets[datasetIndex].data.length;
+                      }),
+                    backgroundColor: Array.from(seenVersions)
+                      .sort((a, b) => parseInt(a) - parseInt(b))
+                      .map(version => {
+                        const datasetIndex = runNumberToIndex(version);
+                        return data.datasets[datasetIndex].backgroundColor;
+                      }),
+                    borderColor: Array.from(seenVersions)
+                      .sort((a, b) => parseInt(a) - parseInt(b))
+                      .map(version => {
+                        const datasetIndex = runNumberToIndex(version);
+                        return data.datasets[datasetIndex].backgroundColor.replace('0.7', '1');
+                      }),
                     borderWidth: 0,
                   }]
                 }} 
