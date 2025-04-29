@@ -55,16 +55,21 @@ const generateBubble = () => ({
   r: faker.number.int({ min: 5, max: 20 })
 });
 
+// Map run number to dataset index (0-9)
+const runNumberToIndex = (runNumber) => {
+  return (parseInt(runNumber) - 1) % 2; // Subtract 1 because run numbers start at 1
+};
+
 export function App() {
   const [data, setData] = useState({
     datasets: [
       {
         data: [],
-        backgroundColor: 'rgba(0, 195, 255, 0.7)', // Blue for stable
+        backgroundColor: 'rgba(255, 2, 145, 0.7)',
       },
       {
         data: [],
-        backgroundColor: 'rgba(255, 2, 145, 0.7)', // Pink for canary
+        backgroundColor: 'rgba(0, 195, 255, 0.7)',
       }
     ],
   });
@@ -73,22 +78,6 @@ export function App() {
   const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
   const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
-
-  // Map run number to dataset index (0-9)
-  const runNumberToIndex = (runNumber) => {
-    const versionNum = parseInt(runNumber);
-    const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
-    
-    // If we have two versions, the lower one is stable (0), higher is canary (1)
-    if (sortedVersions.length >= 2) {
-      const minVersion = parseInt(sortedVersions[0]);
-      const maxVersion = parseInt(sortedVersions[sortedVersions.length - 1]);
-      return versionNum === minVersion ? 0 : 1;
-    }
-    
-    // If we only have one version, treat it as stable
-    return 0;
-  };
 
   // Set initial error rate when component mounts
   useEffect(() => {
@@ -390,6 +379,28 @@ export function App() {
           </div>
         </div>
 
+        <div style={{ marginBottom: '15px' }}>
+          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sliderValue}
+            onChange={handleSliderChange}
+            onMouseUp={handleSliderSet}
+            style={{ width: '100%' }}
+          />
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            marginTop: '3px',
+            fontSize: '0.9em',
+            color: 'rgba(255, 255, 255, 0.7)'
+          }}>
+            <span>{sliderValue}%</span>
+          </div>
+        </div>
+
         {/* Version Statistics */}
         <div style={{ 
           borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
@@ -405,26 +416,26 @@ export function App() {
             }}>
               <Pie 
                 data={{
-                  labels: sortedVersions.length > 1 
+                  labels: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2]) 
                     ? ['Stable', 'Canary']
-                    : ['Stable', 'Canary'],
+                    : ['Canary', 'Stable'],
                   datasets: [{
-                    data: sortedVersions.length > 1
+                    data: sortedVersions.length > 1 && parseInt(sortedVersions[sortedVersions.length - 1]) > parseInt(sortedVersions[sortedVersions.length - 2])
                       ? [
                           data.datasets[0].data.length,
                           data.datasets[1].data.length
                         ]
                       : [
-                          data.datasets[0].data.length,
-                          data.datasets[1].data.length
+                          data.datasets[1].data.length,
+                          data.datasets[0].data.length
                         ],
                     backgroundColor: [
-                      'rgba(0, 195, 255, 0.7)', // Blue for stable
-                      'rgba(255, 2, 145, 0.7)', // Pink for canary
+                      data.datasets[0].backgroundColor,
+                      data.datasets[1].backgroundColor
                     ],
                     borderColor: [
-                      'rgba(0, 195, 255, 1)', // Blue for stable
-                      'rgba(255, 2, 145, 1)', // Pink for canary
+                      data.datasets[0].backgroundColor.replace('0.7', '1'),
+                      data.datasets[1].backgroundColor.replace('0.7', '1')
                     ],
                     borderWidth: 0,
                   }]
