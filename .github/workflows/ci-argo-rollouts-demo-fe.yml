@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'argo-rollouts-demo-fe/**'
+      - '!gitops/**'
   workflow_dispatch:
 
 env:
