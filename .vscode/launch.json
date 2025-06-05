@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug argo-rollouts-demo-be",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/argo-rollouts-demo-be/api.go",
+      "cwd": "${workspaceFolder}/argo-rollouts-demo-be",
+      "env": {
+        "VERSION": "dev"
+      },
+    }
+  ]
+}

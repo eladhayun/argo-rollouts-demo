@@ -12,7 +12,6 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
-.vscode/
 
 # Golang
 *.exe
@@ -33,7 +32,6 @@ go.work.sum
 
 # Editor & OS-specific files
 .idea/
-.vscode/
 *.swp
 *.swo
 *.bak
