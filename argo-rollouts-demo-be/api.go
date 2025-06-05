@@ -25,7 +25,7 @@ var (
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj721"
+	buildHash = "5vj722"
 
 	// Prometheus metrics
 	httpRequestsTotal = promauto.NewCounterVec(
