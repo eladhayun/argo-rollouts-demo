@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 )
 
 type ErrorRate struct {
@@ -86,6 +86,46 @@ func getErrorRate(c echo.Context) error {
 	return c.JSON(http.StatusOK, ErrorRate{Value: currentRate})
 }
 
+func metricsHandler(c echo.Context) error {
+	mu.Lock()
+	errRate := errorRate * 100.0
+	mu.Unlock()
+
+	metrics := make(map[string]map[string]float64)
+	metricChan := make(chan prometheus.Metric, 100)
+	httpRequestsTotal.Collect(metricChan)
+	close(metricChan)
+	for metric := range metricChan {
+		m := &io_prometheus_client.Metric{}
+		if err := metric.Write(m); err != nil {
+			continue
+		}
+		if m.Label == nil {
+			continue
+		}
+		var endpoint, statusCode string
+		for _, label := range m.Label {
+			if label.GetName() == "endpoint" {
+				endpoint = label.GetValue()
+			} else if label.GetName() == "status_code" {
+				statusCode = label.GetValue()
+			}
+		}
+		if endpoint == "" || statusCode == "" {
+			continue
+		}
+		if _, ok := metrics[endpoint]; !ok {
+			metrics[endpoint] = make(map[string]float64)
+		}
+		metrics[endpoint][statusCode] = m.GetCounter().GetValue()
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"error_rate":          errRate,
+		"http_requests_total": metrics,
+	})
+}
+
 func main() {
 	fmt.Println("Build hash:", buildHash)
 	e := echo.New()
@@ -102,7 +142,7 @@ func main() {
 	}))
 
 	// Add Prometheus metrics endpoint
-	e.GET("/api/metrics", echo.WrapHandler(promhttp.Handler()))
+	e.GET("/api/metrics", metricsHandler)
 
 	// Add healthz, check, error-rate, set-error-rate endpoints
 	e.GET("/api/healthz", healthzHandler)
