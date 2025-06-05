@@ -11,6 +11,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type ErrorRate struct {
@@ -23,6 +26,15 @@ var (
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
 	buildHash = "5vj720"
+
+	// Prometheus metrics
+	httpRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests by endpoint and status code",
+		},
+		[]string{"endpoint", "status_code"},
+	)
 )
 
 func checkHandler(c echo.Context) error {
@@ -36,6 +48,9 @@ func checkHandler(c echo.Context) error {
 		statusCode = http.StatusBadRequest
 	}
 
+	// Record the request in Prometheus metrics
+	httpRequestsTotal.WithLabelValues("/api/check", fmt.Sprintf("%d", statusCode)).Inc()
+
 	// Set X-Version header
 	c.Response().Header().Set("X-Version", version)
 	return c.NoContent(statusCode)
@@ -43,12 +58,14 @@ func checkHandler(c echo.Context) error {
 
 func healthzHandler(c echo.Context) error {
 	statusCode := http.StatusOK
+	httpRequestsTotal.WithLabelValues("/api/healthz", fmt.Sprintf("%d", statusCode)).Inc()
 	return c.NoContent(statusCode)
 }
 
 func setErrorRate(c echo.Context) error {
 	var newRate ErrorRate
 	if err := json.NewDecoder(c.Request().Body).Decode(&newRate); err != nil {
+		httpRequestsTotal.WithLabelValues("/api/set-error-rate", fmt.Sprintf("%d", http.StatusBadRequest)).Inc()
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 	}
 
@@ -56,6 +73,7 @@ func setErrorRate(c echo.Context) error {
 	errorRate = newRate.Value / 100.0 // Convert percentage to a fraction
 	mu.Unlock()
 
+	httpRequestsTotal.WithLabelValues("/api/set-error-rate", fmt.Sprintf("%d", http.StatusOK)).Inc()
 	return c.JSON(http.StatusOK, map[string]string{"message": "Error rate updated"})
 }
 
@@ -64,6 +82,7 @@ func getErrorRate(c echo.Context) error {
 	currentRate := errorRate * 100.0 // Convert fraction back to percentage
 	mu.Unlock()
 
+	httpRequestsTotal.WithLabelValues("/api/error-rate", fmt.Sprintf("%d", http.StatusOK)).Inc()
 	return c.JSON(http.StatusOK, ErrorRate{Value: currentRate})
 }
 
@@ -81,6 +100,9 @@ func main() {
 		ExposeHeaders:    []string{"X-Version", "Authorization", "Content-Length"}, // Expose necessary headers
 		AllowCredentials: true,
 	}))
+
+	// Add Prometheus metrics endpoint
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
 	e.GET("/api/healthz", healthzHandler)
 	e.GET("/api/check", checkHandler)
