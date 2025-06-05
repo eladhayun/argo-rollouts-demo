@@ -42,10 +42,10 @@ func checkHandler(c echo.Context) error {
 	currentErrorRate := errorRate
 	mu.Unlock()
 
-	// Determine if the response should be an error (400) based on errorRate
+	// Determine if the response should be an error (500) based on errorRate
 	statusCode := http.StatusOK
 	if rng.Float64() < currentErrorRate {
-		statusCode = http.StatusBadRequest
+		statusCode = http.StatusInternalServerError
 	}
 
 	// Record the request in Prometheus metrics
@@ -87,10 +87,6 @@ func getErrorRate(c echo.Context) error {
 }
 
 func metricsHandler(c echo.Context) error {
-	mu.Lock()
-	errRate := errorRate * 100.0
-	mu.Unlock()
-
 	metrics := make(map[string]map[string]float64)
 	metricChan := make(chan prometheus.Metric, 100)
 	httpRequestsTotal.Collect(metricChan)
@@ -121,7 +117,6 @@ func metricsHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"error_rate":          errRate,
 		"http_requests_total": metrics,
 	})
 }
