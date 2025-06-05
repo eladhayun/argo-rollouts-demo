@@ -104,10 +104,10 @@ func main() {
 	// Add Prometheus metrics endpoint
 	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
-	e.GET("/api/healthz", healthzHandler)
-	e.GET("/api/check", checkHandler)
-	e.GET("/api/error-rate", getErrorRate)
-	e.POST("/api/set-error-rate", setErrorRate)
+	e.GET("/healthz", healthzHandler)
+	e.GET("/check", checkHandler)
+	e.GET("/error-rate", getErrorRate)
+	e.POST("/set-error-rate", setErrorRate)
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
