@@ -25,7 +25,7 @@ var (
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj723"
+	buildHash = "5vj724"
 
 	// Prometheus metrics
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -108,6 +108,10 @@ func metricsHandler(c echo.Context) error {
 			}
 		}
 		if endpoint == "" || statusCode == "" {
+			continue
+		}
+		// Skip the /api/error-rate and /api/set-error-rate endpoints
+		if endpoint == "/api/error-rate" || endpoint == "/api/set-error-rate" {
 			continue
 		}
 		if _, ok := metrics[endpoint]; !ok {
