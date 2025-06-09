@@ -25,7 +25,7 @@ var (
 	mu        sync.Mutex
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj732"
+	buildHash = "5vj733"
 
 	// Prometheus metrics
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -116,6 +116,9 @@ func metricsHandler(c echo.Context) error {
 		}
 		if _, ok := metrics[endpoint]; !ok {
 			metrics[endpoint] = make(map[string]float64)
+			// Initialize both 200 and 500 status codes with 0
+			metrics[endpoint]["200"] = 0
+			metrics[endpoint]["500"] = 0
 		}
 		metrics[endpoint][statusCode] = m.GetCounter().GetValue()
 	}
