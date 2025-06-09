@@ -30,13 +30,13 @@ type StatusCounts struct {
 var (
 	errorRate = 0.0 // Default error rate (0% chance of 400)
 	mu        sync.Mutex
-	version   = os.Getenv("VERSION") // Get version from environment variable
+	version   = getEnvOrDefault("VERSION", "1") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
 	buildHash = "5vj735"
 
 	// Redis client
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
+		Addr:     getEnvOrDefault("REDIS_ADDR", "localhost:6379"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -151,6 +151,13 @@ func metricsHandler(c echo.Context) error {
 		"200": count200,
 		"500": count500,
 	})
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
 }
 
 func main() {
