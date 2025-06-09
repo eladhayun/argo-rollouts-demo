@@ -65,10 +65,11 @@ func checkHandler(c echo.Context) error {
 	// Record the request in Prometheus metrics
 	httpRequestsTotal.WithLabelValues("/api/check", fmt.Sprintf("%d", statusCode)).Inc()
 
-	// Update Redis with the new count
+	// Update Redis with the new count and timestamp
 	ctx := context.Background()
 	key := fmt.Sprintf("status_%d", statusCode)
 	redisClient.Incr(ctx, key)
+	redisClient.Set(ctx, key+":last_incr", time.Now().Format(time.RFC3339), 0)
 
 	// Set X-Version header
 	c.Response().Header().Set("X-Version", version)
@@ -108,11 +109,50 @@ func getErrorRate(c echo.Context) error {
 func metricsHandler(c echo.Context) error {
 	ctx := context.Background()
 
-	// Get counts from Redis
-	count200, _ := redisClient.Get(ctx, "status_200").Float64()
-	count500, _ := redisClient.Get(ctx, "status_500").Float64()
+	// Get current time and calculate window start time
+	now := time.Now()
+	windowStart := now.Add(-100 * time.Second)
 
-	// If Redis is empty, fallback to Prometheus metrics
+	// Get all keys from Redis
+	keys, err := redisClient.Keys(ctx, "status_*").Result()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get keys from Redis"})
+	}
+
+	// Initialize counters
+	count200 := 0.0
+	count500 := 0.0
+
+	// For each key, get the count within the window
+	for _, key := range keys {
+		// Get the timestamp of when this key was last incremented
+		lastIncr, err := redisClient.Get(ctx, key+":last_incr").Result()
+		if err != nil {
+			continue // Skip if no timestamp found
+		}
+
+		// Parse the timestamp
+		lastIncrTime, err := time.Parse(time.RFC3339, lastIncr)
+		if err != nil {
+			continue // Skip if timestamp is invalid
+		}
+
+		// Only count if within the window
+		if lastIncrTime.After(windowStart) {
+			count, err := redisClient.Get(ctx, key).Float64()
+			if err != nil {
+				continue
+			}
+
+			if key == "status_200" {
+				count200 = count
+			} else if key == "status_500" {
+				count500 = count
+			}
+		}
+	}
+
+	// If Redis is empty or no data in window, fallback to Prometheus metrics
 	if count200 == 0 && count500 == 0 {
 		metricChan := make(chan prometheus.Metric, 100)
 		httpRequestsTotal.Collect(metricChan)
