@@ -447,21 +447,6 @@ export function App() {
           )}
         </div>
 
-        {/* Error Rate Statistics */}
-        <div style={{ 
-          borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
-          marginTop: '10px',
-          paddingTop: '10px'
-        }}>
-          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Error Rate:</div>
-          <div style={{ 
-            height: '150px',
-            position: 'relative',
-            marginBottom: '10px'
-          }}>
-            <Pie data={pieChartData} options={pieChartOptions} />
-          </div>
-        </div>
       </div>
     </div>
   );
