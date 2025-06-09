@@ -105,6 +105,19 @@ func getErrorRate(c echo.Context) error {
 	return c.JSON(http.StatusOK, ErrorRate{Value: currentRate})
 }
 
+func resetMetricsHandler(c echo.Context) error {
+	ctx := context.Background()
+
+	// Reset Redis counters
+	redisClient.Del(ctx, "status_200", "status_500")
+
+	// Reset Prometheus metrics
+	httpRequestsTotal.Reset()
+
+	httpRequestsTotal.WithLabelValues("/api/reset-metrics", fmt.Sprintf("%d", http.StatusOK)).Inc()
+	return c.JSON(http.StatusOK, map[string]string{"message": "Metrics reset successfully"})
+}
+
 func metricsHandler(c echo.Context) error {
 	ctx := context.Background()
 
@@ -192,6 +205,7 @@ func main() {
 	e.GET("/api/check", checkHandler)
 	e.GET("/api/error-rate", getErrorRate)
 	e.POST("/api/set-error-rate", setErrorRate)
+	e.POST("/api/reset-metrics", resetMetricsHandler)
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
