@@ -65,11 +65,14 @@ func checkHandler(c echo.Context) error {
 	// Record the request in Prometheus metrics
 	httpRequestsTotal.WithLabelValues("/api/check", fmt.Sprintf("%d", statusCode)).Inc()
 
-	// Update Redis with the new count and timestamp
+	// Update Redis with the new request using ZSET
 	ctx := context.Background()
+	now := time.Now().Unix()
 	key := fmt.Sprintf("status_%d", statusCode)
-	redisClient.Incr(ctx, key)
-	redisClient.Set(ctx, key+":last_incr", time.Now().Format(time.RFC3339), 0)
+	redisClient.ZAdd(ctx, key, redis.Z{
+		Score:  float64(now),
+		Member: now, // Using timestamp as member to ensure uniqueness
+	})
 
 	// Set X-Version header
 	c.Response().Header().Set("X-Version", version)
@@ -110,49 +113,18 @@ func metricsHandler(c echo.Context) error {
 	ctx := context.Background()
 
 	// Get current time and calculate window start time
-	now := time.Now()
-	windowStart := now.Add(-100 * time.Second)
+	now := time.Now().Unix()
+	windowStart := now - 100 // 100 seconds ago
 
-	// Get all keys from Redis
-	keys, err := redisClient.Keys(ctx, "status_*").Result()
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get keys from Redis"})
-	}
+	// Get counts from Redis ZSETs within the window
+	count200, _ := redisClient.ZCount(ctx, "status_200", fmt.Sprintf("%d", windowStart), "+inf").Result()
+	count500, _ := redisClient.ZCount(ctx, "status_500", fmt.Sprintf("%d", windowStart), "+inf").Result()
 
-	// Initialize counters
-	count200 := 0.0
-	count500 := 0.0
+	// Clean up old entries (older than 100 seconds)
+	redisClient.ZRemRangeByScore(ctx, "status_200", "-inf", fmt.Sprintf("%d", windowStart))
+	redisClient.ZRemRangeByScore(ctx, "status_500", "-inf", fmt.Sprintf("%d", windowStart))
 
-	// For each key, get the count within the window
-	for _, key := range keys {
-		// Get the timestamp of when this key was last incremented
-		lastIncr, err := redisClient.Get(ctx, key+":last_incr").Result()
-		if err != nil {
-			continue // Skip if no timestamp found
-		}
-
-		// Parse the timestamp
-		lastIncrTime, err := time.Parse(time.RFC3339, lastIncr)
-		if err != nil {
-			continue // Skip if timestamp is invalid
-		}
-
-		// Only count if within the window
-		if lastIncrTime.After(windowStart) {
-			count, err := redisClient.Get(ctx, key).Float64()
-			if err != nil {
-				continue
-			}
-
-			if key == "status_200" {
-				count200 = count
-			} else if key == "status_500" {
-				count500 = count
-			}
-		}
-	}
-
-	// If Redis is empty or no data in window, fallback to Prometheus metrics
+	// If Redis is empty, fallback to Prometheus metrics
 	if count200 == 0 && count500 == 0 {
 		metricChan := make(chan prometheus.Metric, 100)
 		httpRequestsTotal.Collect(metricChan)
@@ -179,17 +151,17 @@ func metricsHandler(c echo.Context) error {
 			// Only count /api/check endpoint
 			if endpoint == "/api/check" {
 				if statusCode == "200" {
-					count200 = m.GetCounter().GetValue()
+					count200 = int64(m.GetCounter().GetValue())
 				} else if statusCode == "500" {
-					count500 = m.GetCounter().GetValue()
+					count500 = int64(m.GetCounter().GetValue())
 				}
 			}
 		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]float64{
-		"200": count200,
-		"500": count500,
+		"200": float64(count200),
+		"500": float64(count500),
 	})
 }
 
