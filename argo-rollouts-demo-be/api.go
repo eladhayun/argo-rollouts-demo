@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -14,10 +15,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/redis/go-redis/v9"
 )
 
 type ErrorRate struct {
 	Value float64 `json:"value"` // Expecting the key "value"
+}
+
+type StatusCounts struct {
+	Status200 float64 `json:"200"`
+	Status500 float64 `json:"500"`
 }
 
 var (
@@ -26,6 +33,13 @@ var (
 	version   = os.Getenv("VERSION") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
 	buildHash = "5vj735"
+
+	// Redis client
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "redis:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 
 	// Prometheus metrics
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -50,6 +64,11 @@ func checkHandler(c echo.Context) error {
 
 	// Record the request in Prometheus metrics
 	httpRequestsTotal.WithLabelValues("/api/check", fmt.Sprintf("%d", statusCode)).Inc()
+
+	// Update Redis with the new count
+	ctx := context.Background()
+	key := fmt.Sprintf("status_%d", statusCode)
+	redisClient.Incr(ctx, key)
 
 	// Set X-Version header
 	c.Response().Header().Set("X-Version", version)
@@ -87,43 +106,64 @@ func getErrorRate(c echo.Context) error {
 }
 
 func metricsHandler(c echo.Context) error {
-	statusCounts := map[string]float64{
-		"200": 0,
-		"500": 0,
-	}
-	metricChan := make(chan prometheus.Metric, 100)
-	httpRequestsTotal.Collect(metricChan)
-	close(metricChan)
-	for metric := range metricChan {
-		m := &io_prometheus_client.Metric{}
-		if err := metric.Write(m); err != nil {
-			continue
-		}
-		if m.Label == nil {
-			continue
-		}
-		var endpoint, statusCode string
-		for _, label := range m.Label {
-			if label.GetName() == "endpoint" {
-				endpoint = label.GetValue()
-			} else if label.GetName() == "status_code" {
-				statusCode = label.GetValue()
+	ctx := context.Background()
+
+	// Get counts from Redis
+	count200, _ := redisClient.Get(ctx, "status_200").Float64()
+	count500, _ := redisClient.Get(ctx, "status_500").Float64()
+
+	// If Redis is empty, fallback to Prometheus metrics
+	if count200 == 0 && count500 == 0 {
+		metricChan := make(chan prometheus.Metric, 100)
+		httpRequestsTotal.Collect(metricChan)
+		close(metricChan)
+		for metric := range metricChan {
+			m := &io_prometheus_client.Metric{}
+			if err := metric.Write(m); err != nil {
+				continue
 			}
-		}
-		if endpoint == "" || statusCode == "" {
-			continue
-		}
-		// Only count /api/check endpoint
-		if endpoint == "/api/check" {
-			statusCounts[statusCode] = m.GetCounter().GetValue()
+			if m.Label == nil {
+				continue
+			}
+			var endpoint, statusCode string
+			for _, label := range m.Label {
+				if label.GetName() == "endpoint" {
+					endpoint = label.GetValue()
+				} else if label.GetName() == "status_code" {
+					statusCode = label.GetValue()
+				}
+			}
+			if endpoint == "" || statusCode == "" {
+				continue
+			}
+			// Only count /api/check endpoint
+			if endpoint == "/api/check" {
+				if statusCode == "200" {
+					count200 = m.GetCounter().GetValue()
+				} else if statusCode == "500" {
+					count500 = m.GetCounter().GetValue()
+				}
+			}
 		}
 	}
 
-	return c.JSON(http.StatusOK, statusCounts)
+	return c.JSON(http.StatusOK, map[string]float64{
+		"200": count200,
+		"500": count500,
+	})
 }
 
 func main() {
 	fmt.Println("Build hash:", buildHash)
+
+	// Test Redis connection
+	ctx := context.Background()
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		fmt.Printf("Warning: Could not connect to Redis: %v\n", err)
+		fmt.Println("Falling back to local metrics only")
+	}
+
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
