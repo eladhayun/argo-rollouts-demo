@@ -113,20 +113,10 @@ export function App() {
         return {
           datasets: prevData.datasets.map((dataset) => ({
             ...dataset,
-            data: dataset.data
-              .map((bubble) => ({
-                ...bubble,
-                x: bubble.x - 1, // Reduced movement per frame for smoother animation
-              }))
-              .filter((bubble) => {
-                // Keep only bubbles that are in view
-                const inView = bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100;
-                // If we have more than 100 bubbles, keep only the last 100
-                if (dataset.data.length > 100) {
-                  return inView && dataset.data.indexOf(bubble) >= dataset.data.length - 100;
-                }
-                return inView;
-              }),
+            data: dataset.data.map((bubble) => ({
+              ...bubble,
+              x: bubble.x - 1, // Reduced movement per frame for smoother animation
+            })),
           })),
         };
       });
@@ -151,25 +141,14 @@ export function App() {
           setSeenVersions(prev => new Set([...prev, version]));
         }
         
-        if (response.status === 200) {
-          setData((prevData) => ({
-            datasets: prevData.datasets.map((dataset, index) => ({
-              ...dataset,
-              data: index === versionToIndex(version)
-                ? [...dataset.data, generateBubble()]
-                : dataset.data,
-            })),
-          }));
-        } else {
-          setData((prevData) => ({
-            datasets: prevData.datasets.map((dataset, index) => ({
-              ...dataset,
-              data: index === versionToIndex(version)
-                ? [...dataset.data, generateBubble()]
-                : dataset.data,
-            })),
-          }));
-        }
+        setData((prevData) => ({
+          datasets: prevData.datasets.map((dataset, index) => ({
+            ...dataset,
+            data: index === versionToIndex(version)
+              ? [...dataset.data, generateBubble()]
+              : dataset.data,
+          })),
+        }));
       } catch (error) {
         console.error('Error fetching and spawning bubble:', error);
       }
@@ -182,6 +161,16 @@ export function App() {
       clearInterval(apiInterval);
     };
   }, [apiRateValue]); // Add apiRateValue as dependency
+
+  // Filter bubbles for display only
+  const getVisibleBubbles = (dataset) => {
+    return dataset.data
+      .filter((bubble) => {
+        // Keep only bubbles that are in view
+        return bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100;
+      })
+      .slice(-100); // Keep only the last 100 visible bubbles
+  };
 
   const handleSliderChange = (event) => {
     const value = event.target.value;
@@ -325,7 +314,15 @@ export function App() {
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
-      <Bubble options={options} data={data} />
+      <Bubble 
+        options={options} 
+        data={{
+          datasets: data.datasets.map(dataset => ({
+            ...dataset,
+            data: getVisibleBubbles(dataset)
+          }))
+        }} 
+      />
 
       {/* Floating card with sliders and version stats */}
       <div
