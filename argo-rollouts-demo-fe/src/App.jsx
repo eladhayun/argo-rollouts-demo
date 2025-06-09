@@ -55,9 +55,11 @@ const generateBubble = () => ({
   r: faker.number.int({ min: 5, max: 20 })
 });
 
-// Map run number to dataset index (0-9)
-const runNumberToIndex = (runNumber) => {
-  return (parseInt(runNumber) - 1) % 2; // Subtract 1 because run numbers start at 1
+// Map version to dataset index (0-9)
+const versionToIndex = (version) => {
+  // Convert version string to a number and use it to determine the dataset index
+  const versionNum = parseInt(version);
+  return versionNum % 2; // Use modulo 2 to alternate between two colors
 };
 
 export function App() {
@@ -65,11 +67,11 @@ export function App() {
     datasets: [
       {
         data: [],
-        backgroundColor: 'rgba(255, 2, 145, 0.7)',
+        backgroundColor: 'rgba(255, 2, 145, 0.7)', // Pink
       },
       {
         data: [],
-        backgroundColor: 'rgba(0, 195, 255, 0.7)',
+        backgroundColor: 'rgba(0, 195, 255, 0.7)', // Blue
       }
     ],
   });
@@ -153,7 +155,7 @@ export function App() {
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === runNumberToIndex(version)
+              data: index === versionToIndex(version)
                 ? [...dataset.data, generateBubble()]
                 : dataset.data,
             })),
@@ -162,7 +164,7 @@ export function App() {
           setData((prevData) => ({
             datasets: prevData.datasets.map((dataset, index) => ({
               ...dataset,
-              data: index === runNumberToIndex(version)
+              data: index === versionToIndex(version)
                 ? [...dataset.data, generateBubble()]
                 : dataset.data,
             })),
@@ -228,7 +230,7 @@ export function App() {
     // If we only have one version, return [100, 0] or [0, 100] depending on which dataset it's in
     if (lastTwoVersions.length === 1) {
       const version = lastTwoVersions[0];
-      const datasetIndex = runNumberToIndex(version);
+      const datasetIndex = versionToIndex(version);
       const count = data.datasets[datasetIndex].data.length;
       const percentage = ((count / totalBubbles) * 100).toFixed(1);
       console.log(`Single version ${version} (dataset ${datasetIndex}): ${count} bubbles = ${percentage}%`);
@@ -238,7 +240,7 @@ export function App() {
     // For multiple versions, calculate percentages for both datasets
     const percentages = ['0.0', '0.0'];
     lastTwoVersions.forEach(version => {
-      const datasetIndex = runNumberToIndex(version);
+      const datasetIndex = versionToIndex(version);
       const count = data.datasets[datasetIndex].data.length;
       const percentage = ((count / totalBubbles) * 100).toFixed(1);
       console.log(`Version ${version} (dataset ${datasetIndex}): ${count} bubbles = ${percentage}%`);
@@ -384,21 +386,21 @@ export function App() {
                       .sort((a, b) => parseInt(a) - parseInt(b))
                       .slice(-2) // Only take the last two versions
                       .map(version => {
-                        const datasetIndex = runNumberToIndex(version);
+                        const datasetIndex = versionToIndex(version);
                         return data.datasets[datasetIndex].data.length;
                       }),
                     backgroundColor: Array.from(seenVersions)
                       .sort((a, b) => parseInt(a) - parseInt(b))
                       .slice(-2) // Only take the last two versions
                       .map(version => {
-                        const datasetIndex = runNumberToIndex(version);
+                        const datasetIndex = versionToIndex(version);
                         return data.datasets[datasetIndex].backgroundColor;
                       }),
                     borderColor: Array.from(seenVersions)
                       .sort((a, b) => parseInt(a) - parseInt(b))
                       .slice(-2) // Only take the last two versions
                       .map(version => {
-                        const datasetIndex = runNumberToIndex(version);
+                        const datasetIndex = versionToIndex(version);
                         return data.datasets[datasetIndex].backgroundColor.replace('0.7', '1');
                       }),
                     borderWidth: 0,
