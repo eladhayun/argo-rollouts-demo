@@ -1,4 +1,4 @@
-.PHONY: port-forward-argocd run-frontend-dev get-argocd-password watch-rollout
+.PHONY: port-forward-argocd run-frontend-dev get-argocd-password watch-rollout watch-github-actions
 
 port-forward-argocd:
 	kubectl port-forward svc/argocd-server -n argocd 8080:443
@@ -11,3 +11,6 @@ get-argocd-password:
 
 watch-rollout:
 	kubectl argo rollouts get rollout argo-rollouts-demo-be -n demo -w
+
+watch-github-actions:
+	gh run watch $(shell gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
