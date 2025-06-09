@@ -65,14 +65,10 @@ func checkHandler(c echo.Context) error {
 	// Record the request in Prometheus metrics
 	httpRequestsTotal.WithLabelValues("/api/check", fmt.Sprintf("%d", statusCode)).Inc()
 
-	// Update Redis with the new request using ZSET
+	// Update Redis with the new count
 	ctx := context.Background()
-	now := time.Now().Unix()
 	key := fmt.Sprintf("status_%d", statusCode)
-	redisClient.ZAdd(ctx, key, redis.Z{
-		Score:  float64(now),
-		Member: now, // Using timestamp as member to ensure uniqueness
-	})
+	redisClient.Incr(ctx, key)
 
 	// Set X-Version header
 	c.Response().Header().Set("X-Version", version)
@@ -112,17 +108,9 @@ func getErrorRate(c echo.Context) error {
 func metricsHandler(c echo.Context) error {
 	ctx := context.Background()
 
-	// Get current time and calculate window start time
-	now := time.Now().Unix()
-	windowStart := now - 100 // 100 seconds ago
-
-	// Get counts from Redis ZSETs within the window
-	count200, _ := redisClient.ZCount(ctx, "status_200", fmt.Sprintf("%d", windowStart), "+inf").Result()
-	count500, _ := redisClient.ZCount(ctx, "status_500", fmt.Sprintf("%d", windowStart), "+inf").Result()
-
-	// Clean up old entries (older than 100 seconds)
-	redisClient.ZRemRangeByScore(ctx, "status_200", "-inf", fmt.Sprintf("%d", windowStart))
-	redisClient.ZRemRangeByScore(ctx, "status_500", "-inf", fmt.Sprintf("%d", windowStart))
+	// Get counts from Redis
+	count200, _ := redisClient.Get(ctx, "status_200").Float64()
+	count500, _ := redisClient.Get(ctx, "status_500").Float64()
 
 	// If Redis is empty, fallback to Prometheus metrics
 	if count200 == 0 && count500 == 0 {
@@ -151,17 +139,17 @@ func metricsHandler(c echo.Context) error {
 			// Only count /api/check endpoint
 			if endpoint == "/api/check" {
 				if statusCode == "200" {
-					count200 = int64(m.GetCounter().GetValue())
+					count200 = m.GetCounter().GetValue()
 				} else if statusCode == "500" {
-					count500 = int64(m.GetCounter().GetValue())
+					count500 = m.GetCounter().GetValue()
 				}
 			}
 		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]float64{
-		"200": float64(count200),
-		"500": float64(count500),
+		"200": count200,
+		"500": count500,
 	})
 }
 
