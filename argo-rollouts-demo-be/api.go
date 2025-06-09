@@ -87,7 +87,10 @@ func getErrorRate(c echo.Context) error {
 }
 
 func metricsHandler(c echo.Context) error {
-	metrics := make(map[string]map[string]float64)
+	statusCounts := map[string]float64{
+		"200": 0,
+		"500": 0,
+	}
 	metricChan := make(chan prometheus.Metric, 100)
 	httpRequestsTotal.Collect(metricChan)
 	close(metricChan)
@@ -110,22 +113,13 @@ func metricsHandler(c echo.Context) error {
 		if endpoint == "" || statusCode == "" {
 			continue
 		}
-		// Skip the /api/error-rate and /api/set-error-rate endpoints
-		if endpoint == "/api/error-rate" || endpoint == "/api/set-error-rate" {
-			continue
+		// Only count /api/check endpoint
+		if endpoint == "/api/check" {
+			statusCounts[statusCode] = m.GetCounter().GetValue()
 		}
-		if _, ok := metrics[endpoint]; !ok {
-			metrics[endpoint] = make(map[string]float64)
-			// Initialize both 200 and 500 status codes with 0
-			metrics[endpoint]["200"] = 0
-			metrics[endpoint]["500"] = 0
-		}
-		metrics[endpoint][statusCode] = m.GetCounter().GetValue()
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"http_requests_total": metrics,
-	})
+	return c.JSON(http.StatusOK, statusCounts)
 }
 
 func main() {
