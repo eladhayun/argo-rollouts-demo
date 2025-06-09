@@ -1,0 +1,13 @@
+.PHONY: port-forward-argocd run-frontend-dev get-argocd-password watch-rollout
+
+port-forward-argocd:
+	kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+run-frontend-dev:
+	cd argo-rollouts-demo-fe && export VITE_API_BASE_URL=http://4.255.62.39 && npm run dev
+
+get-argocd-password:
+	@kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d && echo
+
+watch-rollout:
+	kubectl argo rollouts get rollout argo-rollouts-demo-be -n demo -w
