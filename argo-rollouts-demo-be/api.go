@@ -32,7 +32,7 @@ var (
 	mu        sync.Mutex
 	version   = getEnvOrDefault("VERSION", "1") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj750"
+	buildHash = "5vj751"
 
 	// Redis client
 	redisClient = redis.NewClient(&redis.Options{
