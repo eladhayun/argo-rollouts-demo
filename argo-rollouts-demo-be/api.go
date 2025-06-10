@@ -28,11 +28,11 @@ type StatusCounts struct {
 }
 
 var (
-	errorRate = 1.0 // Default error rate (0% chance of 400)
+	errorRate = 0.0 // Default error rate (0% chance of 400)
 	mu        sync.Mutex
 	version   = getEnvOrDefault("VERSION", "1") // Get version from environment variable
 	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj749"
+	buildHash = "5vj750"
 
 	// Redis client
 	redisClient = redis.NewClient(&redis.Options{
