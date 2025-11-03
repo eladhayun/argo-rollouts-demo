@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   LinearScale,
@@ -107,39 +107,36 @@ export function App() {
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
-      setData((prevData) => {
-        const totalBubbles = prevData.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
-
-        return {
-          datasets: prevData.datasets.map((dataset) => ({
-            ...dataset,
-            data: dataset.data.map((bubble) => ({
+      setData((prevData) => ({
+        datasets: prevData.datasets.map((dataset) => ({
+          ...dataset,
+          data: dataset.data
+            .map((bubble) => ({
               ...bubble,
-              x: bubble.x - 1, // Reduced movement per frame for smoother animation
-            })),
-          })),
-        };
-      });
+              x: bubble.x - 1,
+            }))
+            .filter((bubble) => bubble.x > -150), // Remove off-screen bubbles
+        })),
+      }));
     }, 16); // ~60fps for smooth animation
 
     const fetchAndSpawnBubble = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/check`);
         
-        setErrorStats(prev => ({ total: prev.total + 1, errors: prev.errors + (response.status !== 200 ? 1 : 0) }));
+        setErrorStats(prev => ({ 
+          total: prev.total + 1, 
+          errors: prev.errors + (response.status !== 200 ? 1 : 0) 
+        }));
         
-        // Get version from headers regardless of status code
         const version = response.headers.get("X-Version");
-
         if (!version) {
           console.error('No version header found in response');
           return;
         }
 
-        if (version) {
-          console.log(`API returned ${response.status} with X-Version: ${version}`);
-          setSeenVersions(prev => new Set([...prev, version]));
-        }
+        console.log(`API returned ${response.status} with X-Version: ${version}`);
+        setSeenVersions(prev => new Set([...prev, version]));
         
         setData((prevData) => ({
           datasets: prevData.datasets.map((dataset, index) => ({
@@ -151,6 +148,7 @@ export function App() {
         }));
       } catch (error) {
         console.error('Error fetching and spawning bubble:', error);
+        setErrorStats(prev => ({ total: prev.total + 1, errors: prev.errors + 1 }));
       }
     };
     
@@ -162,14 +160,8 @@ export function App() {
     };
   }, [apiRateValue]); // Add apiRateValue as dependency
 
-  // Filter bubbles for display only
   const getVisibleBubbles = (dataset) => {
-    return dataset.data
-      .filter((bubble) => {
-        // Keep only bubbles that are in view
-        return bubble.x > -150 && bubble.x <= 150 && bubble.y >= -100 && bubble.y <= 100;
-      })
-      .slice(-100); // Keep only the last 100 visible bubbles
+    return dataset.data.slice(-100); // Keep only the last 100 bubbles for performance
   };
 
   const handleSliderChange = (event) => {
@@ -186,7 +178,6 @@ export function App() {
 
   const handleSliderSet = async (event) => {
     const value = event.target.value;
-    console.log(`Setting error rate to ${value}%`);
     try {
       const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
         method: 'POST',
@@ -194,17 +185,17 @@ export function App() {
         body: JSON.stringify({ value: Number(value) }),
       });
 
-      if (!response.ok) {
-        console.error('Failed to set error rate:', value, 'Response:', response.status);
-      } else {
+      if (response.ok) {
         console.log('Successfully set error rate to:', value);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to set error rate:', errorData.error || response.status);
       }
     } catch (error) {
       console.error('Error setting error rate:', error);
     }
   }
 
-  // Calculate percentages for each version based on chart data
   const calculateVersionPercentages = () => {
     const totalBubbles = data.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
     if (totalBubbles === 0) return ['0.0', '0.0'];
@@ -212,35 +203,23 @@ export function App() {
     const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
     const lastTwoVersions = sortedVersions.slice(-2);
     
-    console.log('Total bubbles:', totalBubbles);
-    console.log('Last two versions:', lastTwoVersions);
-    console.log('Dataset lengths:', data.datasets.map(d => d.data.length));
-    
-    // If we only have one version, return [100, 0] or [0, 100] depending on which dataset it's in
     if (lastTwoVersions.length === 1) {
       const version = lastTwoVersions[0];
       const datasetIndex = versionToIndex(version);
-      const count = data.datasets[datasetIndex].data.length;
-      const percentage = ((count / totalBubbles) * 100).toFixed(1);
-      console.log(`Single version ${version} (dataset ${datasetIndex}): ${count} bubbles = ${percentage}%`);
+      const percentage = '100.0';
       return datasetIndex === 0 ? [percentage, '0.0'] : ['0.0', percentage];
     }
     
-    // For multiple versions, calculate percentages for both datasets
     const percentages = ['0.0', '0.0'];
     lastTwoVersions.forEach(version => {
       const datasetIndex = versionToIndex(version);
       const count = data.datasets[datasetIndex].data.length;
       const percentage = ((count / totalBubbles) * 100).toFixed(1);
-      console.log(`Version ${version} (dataset ${datasetIndex}): ${count} bubbles = ${percentage}%`);
       percentages[datasetIndex] = percentage;
     });
     
-    console.log('Final percentages:', percentages);
     return percentages;
   };
-
-  const versionPercentages = calculateVersionPercentages();
   
   // Convert seen versions to array and sort
   const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
@@ -331,7 +310,7 @@ export function App() {
           top: '20px',
           left: '20px',
           padding: '15px',
-          background: 'rgba(0, 0, 0,r 0.7)',
+          background: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
           borderRadius: '10px',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',

@@ -1,33 +1,47 @@
-# Use a minimal base image with Go
-FROM golang:latest AS builder
+# Build stage
+FROM golang:1.21-alpine AS builder
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy the Go source code
+# Copy dependency files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
 COPY . .
 
-# Download dependencies
-RUN go mod tidy
+# Build arguments
+ARG VERSION=dev
+ARG BUILD_HASH=dev
 
-# Build the Go application, specifying the correct filename
-RUN go build -o server api.go
+# Build with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o server api.go
 
-# Use a minimal runtime image for deployment
-FROM golang:latest
+# Runtime stage
+FROM alpine:3.19
 
-# Set the working directory
-WORKDIR /root/
+RUN apk --no-cache add ca-certificates tzdata
 
-# Copy the compiled binary from the builder stage
+WORKDIR /app
+
+# Copy binary from builder
 COPY --from=builder /app/server .
 
-# Define build argument for version
-ARG VERSION
-ENV VERSION=$VERSION
+# Set environment variables
+ENV VERSION=${VERSION} \
+    BUILD_HASH=${BUILD_HASH}
 
-# Expose the application port
+# Create non-root user
+RUN adduser -D -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
 EXPOSE 8080
 
-# Start the application
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/healthz || exit 1
+
 CMD ["./server"]

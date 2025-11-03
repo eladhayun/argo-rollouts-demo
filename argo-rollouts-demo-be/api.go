@@ -4,11 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -28,18 +33,13 @@ type StatusCounts struct {
 }
 
 var (
-	errorRate = 0.0 // Default error rate (0% chance of 400)
-	mu        sync.Mutex
-	version   = getEnvOrDefault("VERSION", "1") // Get version from environment variable
-	rng       = rand.New(rand.NewSource(time.Now().UnixNano()))
-	buildHash = "5vj751"
-
-	// Redis client
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:     getEnvOrDefault("REDIS_ADDR", "localhost:6379"),
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+	errorRate     atomic.Uint64 // Store as uint64 bits of float64 for atomic operations
+	version       = getEnvOrDefault("VERSION", "1")
+	buildHash     = getEnvOrDefault("BUILD_HASH", "dev")
+	rng           = rand.New(rand.NewSource(time.Now().UnixNano()))
+	rngMu         sync.Mutex
+	redisClient   *redis.Client
+	redisCtx      = context.Background()
 
 	// Prometheus metrics
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -52,23 +52,24 @@ var (
 )
 
 func checkHandler(c echo.Context) error {
-	mu.Lock()
-	currentErrorRate := errorRate
-	mu.Unlock()
+	currentErrorRate := getErrorRate()
 
 	// Determine if the response should be an error (500) based on errorRate
 	statusCode := http.StatusOK
+	rngMu.Lock()
 	if rng.Float64() < currentErrorRate {
 		statusCode = http.StatusInternalServerError
 	}
+	rngMu.Unlock()
 
 	// Record the request in Prometheus metrics
 	httpRequestsTotal.WithLabelValues("/api/check", fmt.Sprintf("%d", statusCode)).Inc()
 
-	// Update Redis with the new count
-	ctx := context.Background()
-	key := fmt.Sprintf("status_%d", statusCode)
-	redisClient.Incr(ctx, key)
+	// Update Redis with the new count (non-blocking)
+	if redisClient != nil {
+		key := fmt.Sprintf("status_%d", statusCode)
+		go redisClient.Incr(redisCtx, key)
+	}
 
 	// Set X-Version header
 	c.Response().Header().Set("X-Version", version)
@@ -88,28 +89,41 @@ func setErrorRate(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 	}
 
-	mu.Lock()
-	errorRate = newRate.Value / 100.0 // Convert percentage to a fraction
-	mu.Unlock()
+	if newRate.Value < 0 || newRate.Value > 100 {
+		httpRequestsTotal.WithLabelValues("/api/set-error-rate", fmt.Sprintf("%d", http.StatusBadRequest)).Inc()
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Error rate must be between 0 and 100"})
+	}
+
+	storeErrorRate(newRate.Value / 100.0)
 
 	httpRequestsTotal.WithLabelValues("/api/set-error-rate", fmt.Sprintf("%d", http.StatusOK)).Inc()
 	return c.JSON(http.StatusOK, map[string]string{"message": "Error rate updated"})
 }
 
-func getErrorRate(c echo.Context) error {
-	mu.Lock()
-	currentRate := errorRate * 100.0 // Convert fraction back to percentage
-	mu.Unlock()
+func getErrorRateHandler(c echo.Context) error {
+	currentRate := getErrorRate() * 100.0
 
 	httpRequestsTotal.WithLabelValues("/api/error-rate", fmt.Sprintf("%d", http.StatusOK)).Inc()
 	return c.JSON(http.StatusOK, ErrorRate{Value: currentRate})
 }
 
-func resetMetricsHandler(c echo.Context) error {
-	ctx := context.Background()
+func getErrorRate() float64 {
+	bits := errorRate.Load()
+	return *(*float64)(unsafe.Pointer(&bits))
+}
 
+func storeErrorRate(rate float64) {
+	bits := *(*uint64)(unsafe.Pointer(&rate))
+	errorRate.Store(bits)
+}
+
+func resetMetricsHandler(c echo.Context) error {
 	// Reset Redis counters
-	redisClient.Del(ctx, "status_200", "status_500")
+	if redisClient != nil {
+		if err := redisClient.Del(redisCtx, "status_200", "status_500").Err(); err != nil {
+			log.Printf("Warning: Failed to reset Redis counters: %v", err)
+		}
+	}
 
 	// Reset Prometheus metrics
 	httpRequestsTotal.Reset()
@@ -119,13 +133,15 @@ func resetMetricsHandler(c echo.Context) error {
 }
 
 func metricsHandler(c echo.Context) error {
-	ctx := context.Background()
+	var count200, count500 float64
 
-	// Get counts from Redis
-	count200, _ := redisClient.Get(ctx, "status_200").Float64()
-	count500, _ := redisClient.Get(ctx, "status_500").Float64()
+	// Get counts from Redis if available
+	if redisClient != nil {
+		count200, _ = redisClient.Get(redisCtx, "status_200").Float64()
+		count500, _ = redisClient.Get(redisCtx, "status_500").Float64()
+	}
 
-	// If Redis is empty, fallback to Prometheus metrics
+	// If Redis is empty or unavailable, fallback to Prometheus metrics
 	if count200 == 0 && count500 == 0 {
 		metricChan := make(chan prometheus.Metric, 100)
 		httpRequestsTotal.Collect(metricChan)
@@ -174,38 +190,70 @@ func getEnvOrDefault(key, defaultValue string) string {
 }
 
 func main() {
-	fmt.Println("Build hash:", buildHash)
+	log.Printf("Starting server - Version: %s, Build Hash: %s", version, buildHash)
+
+	// Initialize Redis client
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:         getEnvOrDefault("REDIS_ADDR", "localhost:6379"),
+		Password:     "",
+		DB:           0,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+	})
 
 	// Test Redis connection
-	ctx := context.Background()
-	_, err := redisClient.Ping(ctx).Result()
+	_, err := redisClient.Ping(redisCtx).Result()
 	if err != nil {
-		fmt.Printf("Warning: Could not connect to Redis: %v\n", err)
-		fmt.Println("Falling back to local metrics only")
+		log.Printf("Warning: Could not connect to Redis: %v", err)
+		log.Println("Falling back to local metrics only")
+		redisClient = nil
 	}
 
 	e := echo.New()
+	e.HideBanner = true
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Enable CORS with all headers exposed
+	// Enable CORS
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"}, // Change this to specific origins for security
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowHeaders:     []string{"*"},
-		ExposeHeaders:    []string{"X-Version", "Authorization", "Content-Length"}, // Expose necessary headers
+		ExposeHeaders:    []string{"X-Version", "Authorization", "Content-Length"},
 		AllowCredentials: true,
 	}))
 
-	// Add Prometheus metrics endpoint
+	// Register routes
 	e.GET("/api/metrics", metricsHandler)
-
-	// Add healthz, check, error-rate, set-error-rate endpoints
 	e.GET("/api/healthz", healthzHandler)
 	e.GET("/api/check", checkHandler)
-	e.GET("/api/error-rate", getErrorRate)
+	e.GET("/api/error-rate", getErrorRateHandler)
 	e.POST("/api/set-error-rate", setErrorRate)
 	e.POST("/api/reset-metrics", resetMetricsHandler)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	// Graceful shutdown
+	go func() {
+		if err := e.Start(":8080"); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed to start: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := e.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	if redisClient != nil {
+		redisClient.Close()
+	}
+
+	log.Println("Server exited")
 }

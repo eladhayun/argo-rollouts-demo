@@ -1,39 +1,36 @@
-# ---- Stage 1: Build ----
+# Build stage
 FROM node:23-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and lock files separately for better caching
+# Copy package files
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with clean install
+RUN npm ci --only=production=false
 
-# Copy the rest of the project files
+# Copy source files
 COPY . .
 
 # Build the project
 RUN npm run build
 
-# ---- Stage 2: Serve with Nginx ----
-FROM nginx:1.23-alpine
+# Runtime stage
+FROM nginx:1.25-alpine
 
-# Set working directory for Nginx
+# Copy built files
 WORKDIR /usr/share/nginx/html
-
-# Remove default Nginx static files
 RUN rm -rf ./*
-
-# Copy built files from builder stage
 COPY --from=builder /app/dist .
 
-# Copy custom Nginx configuration
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80 for the web server
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
 EXPOSE 80
 
-# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
     
