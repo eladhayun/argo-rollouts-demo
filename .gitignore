@@ -26,7 +26,6 @@ bin/
 obj/
 pkg/
 Gopkg.lock
-go.sum
 go.work
 go.work.sum
 
