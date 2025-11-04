@@ -1,3 +1,0 @@
-[submodule "gitops"]
-	path = gitops
-	url = git@github.com:eladhayun/gitops.git
