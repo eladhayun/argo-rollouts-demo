@@ -1,5 +1,5 @@
 # Build stage
-FROM node:23-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Runtime stage
-FROM nginx:1.25-alpine
+FROM nginx:1.29-alpine
 
 # Copy built files
 WORKDIR /usr/share/nginx/html
