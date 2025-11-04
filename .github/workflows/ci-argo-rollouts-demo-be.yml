@@ -1,11 +1,22 @@
-name: Build and Push Backend to ACR
+name: Backend CI/CD
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - 'argo-rollouts-demo-be/**'
-      - '!gitops/**'
+      - '.github/workflows/ci-argo-rollouts-demo-be.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'argo-rollouts-demo-be/**'
+      - '.github/workflows/ci-argo-rollouts-demo-be.yml'
   workflow_dispatch:
 
 env:
@@ -13,53 +24,117 @@ env:
   GITOPS_REPO: eladhayun/gitops
   
 jobs:
-  build-and-push:
+  test:
+    name: Test and Lint
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      
+    timeout-minutes: 10
+
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to ACR
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install dependencies
+        run: |
+          cd argo-rollouts-demo-be
+          go clean -modcache || true
+          go mod download
+
+      - name: Format code check
+        run: |
+          cd argo-rollouts-demo-be
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Code is not formatted. Please run 'go fmt ./...'"
+            gofmt -s -l .
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: |
+          cd argo-rollouts-demo-be
+          go vet ./...
+
+      - name: Run staticcheck
+        run: |
+          if ! command -v staticcheck &> /dev/null; then
+            go install honnef.co/go/tools/cmd/staticcheck@latest
+          fi
+          cd argo-rollouts-demo-be
+          staticcheck ./...
+
+      - name: Run tests
+        run: |
+          cd argo-rollouts-demo-be
+          go test -v ./...
+
+      - name: Build application
+        run: |
+          cd argo-rollouts-demo-be
+          go build -o bin/server .
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.ACR_REGISTRY_NAME }}
+          registry: ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./argo-rollouts-demo-be
           push: true
-          tags: ${{ secrets.ACR_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          build-args: |
-            VERSION=${{ github.run_number }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   update-gitops:
-    needs: build-and-push
+    name: Update GitOps Repository
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
     steps:
       - name: Checkout GitOps repository
         uses: actions/checkout@v4
         with:
           repository: ${{ env.GITOPS_REPO }}
           token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
 
       - name: Update image tag in deployment
         run: |
-          # Update the image tag in the deployment manifest
-          sed -i "s|${{ secrets.ACR_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:.*|${{ secrets.ACR_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" argo-rollouts-demo-be/rollout.yaml
+          cd gitops/argo-rollouts-demo-be
+          IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          sed -i "s|image: .*${{ env.IMAGE_NAME }}:.*|image: ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${IMAGE_TAG}|g" rollout.yaml
 
       - name: Commit and push changes
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add argo-rollouts-demo-be/rollout.yaml
-          git commit -m "chore: update backend image to ${{ github.sha }}"
-          git push origin HEAD 
+          cd gitops
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Update backend image to ${GITHUB_SHA::7}" || echo "No changes to commit"
+          git push 
