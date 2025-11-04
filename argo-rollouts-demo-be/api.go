@@ -33,13 +33,13 @@ type StatusCounts struct {
 }
 
 var (
-	errorRate     atomic.Uint64 // Store as uint64 bits of float64 for atomic operations
-	version       = getEnvOrDefault("VERSION", "1")
-	buildHash     = getEnvOrDefault("BUILD_HASH", "dev")
-	rng           = rand.New(rand.NewSource(time.Now().UnixNano()))
-	rngMu         sync.Mutex
-	redisClient   *redis.Client
-	redisCtx      = context.Background()
+	errorRate   atomic.Uint64 // Store as uint64 bits of float64 for atomic operations
+	version     = getEnvOrDefault("VERSION", "1")
+	buildHash   = getEnvOrDefault("BUILD_HASH", "dev")
+	rng         = rand.New(rand.NewSource(time.Now().UnixNano()))
+	rngMu       sync.Mutex
+	redisClient *redis.Client
+	redisCtx    = context.Background()
 
 	// Prometheus metrics
 	httpRequestsTotal = promauto.NewCounterVec(

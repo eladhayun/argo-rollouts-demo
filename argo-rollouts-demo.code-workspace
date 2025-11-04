@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../gitops"
+		}
+	],
+	"settings": {
+		"explorer.compactFolders": false,
+		"makefile.configureOnOpen": false
+	}
+}

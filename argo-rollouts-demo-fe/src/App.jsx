@@ -29,7 +29,7 @@ const getStoredApiRate = () => {
 
 ChartJS.register(LinearScale, PointElement, Tooltip, ArcElement, Legend, ChartDataLabels);
 
-export const options = {
+const options = {
   responsive: true, // Ensure the chart resizes
   maintainAspectRatio: false, // Allow full height usage
   animation: false, // Disable built-in animations
@@ -79,7 +79,6 @@ export function App() {
   const [sliderValue, setSliderValue] = useState(getStoredErrorRate()); // Initialize from localStorage
   const [apiRateValue, setApiRateValue] = useState(getStoredApiRate()); // Initialize from localStorage
   const [seenVersions, setSeenVersions] = useState(new Set()); // Track unique versions
-  const [errorStats, setErrorStats] = useState({ total: 0, errors: 0 }); // Track error statistics
 
   // Set initial error rate when component mounts
   useEffect(() => {
@@ -103,7 +102,7 @@ export function App() {
     };
 
     initializeErrorRate();
-  }, []); // Empty dependency array means this runs once on mount
+  }, [sliderValue]); // Add sliderValue as dependency
 
   useEffect(() => {
     const moveInterval = setInterval(() => {
@@ -124,11 +123,6 @@ export function App() {
       try {
         const response = await fetch(`${API_BASE_URL}/api/check`);
         
-        setErrorStats(prev => ({ 
-          total: prev.total + 1, 
-          errors: prev.errors + (response.status !== 200 ? 1 : 0) 
-        }));
-        
         const version = response.headers.get("X-Version");
         if (!version) {
           console.error('No version header found in response');
@@ -148,7 +142,6 @@ export function App() {
         }));
       } catch (error) {
         console.error('Error fetching and spawning bubble:', error);
-        setErrorStats(prev => ({ total: prev.total + 1, errors: prev.errors + 1 }));
       }
     };
     
@@ -164,132 +157,14 @@ export function App() {
     return dataset.data.slice(-100); // Keep only the last 100 bubbles for performance
   };
 
-  const handleSliderChange = (event) => {
-    const value = event.target.value;
-    setSliderValue(value);
-    localStorage.setItem('errorRate', value);
-  };
-
   const handleApiRateChange = (event) => {
     const value = event.target.value;
     setApiRateValue(Number(value));
     localStorage.setItem('apiRate', value);
   };
-
-  const handleSliderSet = async (event) => {
-    const value = event.target.value;
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/set-error-rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: Number(value) }),
-      });
-
-      if (response.ok) {
-        console.log('Successfully set error rate to:', value);
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to set error rate:', errorData.error || response.status);
-      }
-    } catch (error) {
-      console.error('Error setting error rate:', error);
-    }
-  }
-
-  const calculateVersionPercentages = () => {
-    const totalBubbles = data.datasets.reduce((sum, dataset) => sum + dataset.data.length, 0);
-    if (totalBubbles === 0) return ['0.0', '0.0'];
-
-    const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
-    const lastTwoVersions = sortedVersions.slice(-2);
-    
-    if (lastTwoVersions.length === 1) {
-      const version = lastTwoVersions[0];
-      const datasetIndex = versionToIndex(version);
-      const percentage = '100.0';
-      return datasetIndex === 0 ? [percentage, '0.0'] : ['0.0', percentage];
-    }
-    
-    const percentages = ['0.0', '0.0'];
-    lastTwoVersions.forEach(version => {
-      const datasetIndex = versionToIndex(version);
-      const count = data.datasets[datasetIndex].data.length;
-      const percentage = ((count / totalBubbles) * 100).toFixed(1);
-      percentages[datasetIndex] = percentage;
-    });
-    
-    return percentages;
-  };
   
   // Convert seen versions to array and sort
   const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
-
-  const pieChartData = {
-    labels: ['Successful', 'Failed'],
-    datasets: [
-      {
-        label: 'Error Rate Distribution',
-        data: [
-          errorStats.total - errorStats.errors,
-          errorStats.errors
-        ],
-        backgroundColor: [
-          'rgba(8, 118, 23, 0.3)',
-          'rgba(255, 87, 87, 0.3)',
-        ],
-        borderColor: [
-          'rgba(70, 219, 90, 0.7)',
-          'rgba(255, 87, 87, 0.7)',
-        ],
-        borderWidth: 0,
-      },
-    ],
-  };
-
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          color: 'white',
-          padding: 20,
-          font: {
-            size: 12
-          },
-          usePointStyle: true,
-          pointStyle: 'circle',
-          boxWidth: 8,
-          boxHeight: 8
-        }
-      },
-      tooltip: {
-        enabled: false,
-        callbacks: {
-          label: function(context) {
-            const value = context.raw;
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = Math.round((value / total) * 100);
-            return `${context.label}: ${value} (${percentage}%)`;
-          }
-        }
-      },
-      datalabels: {
-        color: 'white',
-        font: {
-          weight: 'bold',
-          size: 12
-        },
-        formatter: (value, context) => {
-          const total = context.dataset.data.reduce((a, b) => a + b, 0);
-          const percentage = Math.round((value / total) * 100);
-          return `${percentage}%`;
-        }
-      }
-    }
-  };
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
