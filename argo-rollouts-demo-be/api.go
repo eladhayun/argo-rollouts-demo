@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-	"unsafe"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -109,11 +109,11 @@ func getErrorRateHandler(c echo.Context) error {
 
 func getErrorRate() float64 {
 	bits := errorRate.Load()
-	return *(*float64)(unsafe.Pointer(&bits))
+	return math.Float64frombits(bits)
 }
 
 func storeErrorRate(rate float64) {
-	bits := *(*uint64)(unsafe.Pointer(&rate))
+	bits := math.Float64bits(rate)
 	errorRate.Store(bits)
 }
 
