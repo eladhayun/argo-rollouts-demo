@@ -122,7 +122,7 @@ export function App() {
     const fetchAndSpawnBubble = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/check`);
-        
+
         const version = response.headers.get("X-Version");
         if (!version) {
           console.error('No version header found in response');
@@ -131,7 +131,7 @@ export function App() {
 
         console.log(`API returned ${response.status} with X-Version: ${version}`);
         setSeenVersions(prev => new Set([...prev, version]));
-        
+
         setData((prevData) => ({
           datasets: prevData.datasets.map((dataset, index) => ({
             ...dataset,
@@ -144,7 +144,7 @@ export function App() {
         console.error('Error fetching and spawning bubble:', error);
       }
     };
-    
+
     const apiInterval = setInterval(fetchAndSpawnBubble, apiRateValue);
 
     return () => {
@@ -162,7 +162,7 @@ export function App() {
     setApiRateValue(Number(value));
     localStorage.setItem('apiRate', value);
   };
-  
+
   // Convert seen versions to array and sort
   const sortedVersions = Array.from(seenVersions).sort((a, b) => parseInt(a) - parseInt(b));
 
@@ -184,16 +184,16 @@ export function App() {
           zIndex: 1000,
         }}
       >
-        ?? Argo Rollouts Demo
+        Argo Rollouts Demo
       </div>
-      <Bubble 
-        options={options} 
+      <Bubble
+        options={options}
         data={{
           datasets: data.datasets.map(dataset => ({
             ...dataset,
             data: getVisibleBubbles(dataset)
           }))
-        }} 
+        }}
       />
 
       {/* Floating card with sliders and version stats */}
@@ -221,8 +221,8 @@ export function App() {
             onChange={handleApiRateChange}
             style={{ width: '100%' }}
           />
-          <div style={{ 
-            display: 'flex', 
+          <div style={{
+            display: 'flex',
             justifyContent: 'space-between',
             marginTop: '3px',
             fontSize: '0.9em',
@@ -233,19 +233,19 @@ export function App() {
         </div>
 
         {/* Version Statistics */}
-        <div style={{ 
-          borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
+        <div style={{
+          borderTop: '1px solid rgba(255, 255, 255, 0.2)',
           paddingTop: '10px',
           fontSize: '0.9em'
         }}>
           <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Version Distribution:</div>
           {sortedVersions.length > 0 ? (
-            <div style={{ 
+            <div style={{
               height: '150px',
               position: 'relative',
               marginBottom: '10px'
             }}>
-              <Pie 
+              <Pie
                 data={{
                   labels: Array.from(seenVersions)
                     .sort((a, b) => parseInt(a) - parseInt(b))
@@ -274,7 +274,7 @@ export function App() {
                       }),
                     borderWidth: 0,
                   }]
-                }} 
+                }}
                 options={{
                   responsive: true,
                   maintainAspectRatio: false,
@@ -310,7 +310,7 @@ export function App() {
                       }
                     }
                   }
-                }} 
+                }}
               />
             </div>
           ) : (
