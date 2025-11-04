@@ -29,6 +29,10 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/server .
 
+# Re-declare build arguments for runtime stage
+ARG VERSION=dev
+ARG BUILD_HASH=dev
+
 # Set environment variables
 ENV VERSION=${VERSION} \
     BUILD_HASH=${BUILD_HASH}
