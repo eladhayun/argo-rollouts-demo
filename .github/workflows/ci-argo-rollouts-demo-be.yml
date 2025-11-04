@@ -109,6 +109,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.run_number }}
+            BUILD_HASH=${{ github.sha }}
 
   update-gitops:
     name: Update GitOps Repository
