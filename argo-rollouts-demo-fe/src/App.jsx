@@ -168,6 +168,24 @@ export function App() {
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
+      {/* Title Banner */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '12px 20px',
+          background: 'rgba(0, 0, 0, 0.85)',
+          color: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+          fontWeight: 'bold',
+          fontSize: '1.1em',
+          zIndex: 1000,
+        }}
+      >
+        ?? Argo Rollouts Demo
+      </div>
       <Bubble 
         options={options} 
         data={{
